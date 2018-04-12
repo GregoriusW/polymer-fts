@@ -1,0 +1,330 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-media-query/iron-media-query.html">
+<link rel="import" href="../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="fts-styles.html">
+
+<dom-module id="fts-profile">
+  <template>
+    <style include="fts-styles">
+       :host {
+        @apply --paper-font-body1;
+        --paper-input-container-input: {
+          @apply --paper-font-body1;
+        }
+      }
+
+      .card {
+        margin-bottom: 24px;
+      }
+
+      .card>.card-content,
+      .card>.card-footer {
+        padding: 24px;
+      }
+
+      .card-footer {
+        border-top: 1px solid var(--divider-color);
+      }
+
+      .card-footer.buttons {
+        @apply --layout-horizontal-reverse;
+        padding: 12px;
+      }
+
+      .group {
+        @apply --layout-horizontal;
+      }
+
+      .group>* {
+        @apply --layout-flex-auto;
+      }
+
+      paper-button {
+        color: var(--primary-color);
+      }
+
+      paper-button.primary {
+        margin: 0;
+        background-color: var(--primary-color);
+        color: #fff;
+      }
+
+      paper-button.block {
+        width: 100%;
+      }
+
+      aside>.card {
+        margin-right: 24px;
+        width: 256px;
+      }
+
+      .card iron-image {
+        display: block;
+        margin: 0 auto;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        border: 4px solid var(--divider-color);
+      }
+
+      .card h2 {
+        @apply --paper-font-title;
+        text-align: center;
+        margin: 0;
+      }
+
+      .content {
+        @apply --layout;
+        @apply --layout-center-justified;
+        margin: 24px;
+      }
+
+      .content main {
+        @apply --layout-flex;
+        overflow: hidden;
+      }
+
+      .help-text {
+        @apply --paper-font-caption;
+        margin: 0;
+      }
+
+      label {
+        @apply --paper-font-menu;
+      }
+
+      *+label {
+        margin-top: 1em;
+      }
+
+      label+input {
+        display: block;
+      }
+
+      h3 {
+        @apply --paper-font-body2;
+        margin: 0;
+      }
+    </style>
+
+    <app-route route="[[route]]" pattern="/:uid" data="{{routeData}}"></app-route>
+    <iron-media-query query="(max-width: 800px)" query-matches="{{narrow}}"></iron-media-query>
+
+    <div class="content">
+      <template is="dom-if" if="[[!narrow]]">
+        <aside>
+          <template is="dom-if" if="[[!edit]]">
+            <div class="card">
+              <div class="card-content">
+                <iron-image fade preload src="[[_computeProfilePictureURL(userData.photoURL)]]" sizing="cover" placeholder="data:image/jpeg;base64,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"></iron-image>
+                <h2>[[_computeFullName(userData.firstName, userData.lastName)]]</h2>
+              </div>
+              <div class="card-footer">
+                <paper-button class="primary block" raised on-tap="_toggleEdit">[[_computeButtonLabel(edit)]]</paper-button>
+              </div>
+            </div>
+          </template>
+        </aside>
+      </template>
+      <main>
+        <template is="dom-if" if="[[narrow]]">
+          <div class="card">
+            <div class="card-content">
+              <iron-image fade preload src="[[_computeProfilePictureURL(userData.photoURL)]]" sizing="cover" placeholder="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAXgBeAAD/4QBoRXhpZgAATU0AKgAAAAgABAEaAAUAAAABAAAAPgEbAAUAAAABAAAARgEoAAMAAAABAAMAAAExAAIAAAARAAAATgAAAAAAAJCHAAAD6AAAkIcAAAPocGFpbnQubmV0IDQuMC4xMAAA/9sAQwABAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB/9sAQwEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB/8AAEQgAIAAgAwEiAAIRAQMRAf/EAB8AAAEFAQEBAQEBAAAAAAAAAAABAgMEBQYHCAkKC//EALUQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+v/EAB8BAAMBAQEBAQEBAQEAAAAAAAABAgMEBQYHCAkKC//EALURAAIBAgQEAwQHBQQEAAECdwABAgMRBAUhMQYSQVEHYXETIjKBCBRCkaGxwQkjM1LwFWJy0QoWJDThJfEXGBkaJicoKSo1Njc4OTpDREVGR0hJSlNUVVZXWFlaY2RlZmdoaWpzdHV2d3h5eoKDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uLj5OXm5+jp6vLz9PX29/j5+v/aAAwDAQACEQMRAD8A+7/BfhDXvH/izw94K8L2Zv8AxB4n1az0bSrXdsR7q9lWJZJ5cEQWtupa4vLlx5dtaxTXEhEcbEf0P/BX/gn78B/hnoNivi3wzpvxP8YvBG2sa54qt2vtI+1FQZrfRvDdwz6Va6fE+VgkvLa81OUDfPebWWCH8lP+CeFxpNv+1d8PjqhiWSaw8YW+kPNtCrq0vhPWBEFZvlWWW0+2QQ/xPNKkaZkdQf6VaAPiP4w/sC/s/fEzQryDw/4S034Z+KRBJ/ZHiLwZaLplpb3QUmJNT8OW7w6LqVg8gT7Si21rqBiDLaalaMxY/wA73xD8B+Ivhf438S/D/wAWWq2niDwtqk2l6hHGzPBKUCy217aSMqNLY6jZy2+oWEzRxtNZXUErRoXKj+v2v5yf+ClNxpM/7UeuJppiN3a+EfCFvr3l4LDVv7PeeITY/wCWo0SfRx83zCLyh0AoA+HvDviDWfCmvaN4n8PX8+l674f1Oy1jSNRtiBPZajp9xHdWlxHuDIxjmjRikivHIuY5EeNmU/vv8Jv+CjXwz1LRtM07462OtfCXxv8A2fazXcl74d1678M62k0f7nVtGewsr7VbK1vwrXCwajZC1tg4ig1bUFUzV5t/wTp/ZU8L2ngvTfjz480W01rxN4inuJ/AllqttHdWnhzRLG5ltI9dis51aI63q13bzz2V7JG72OmR2U+nvDLfXLV+o/iLwh4T8X26Wfizwv4d8UWkRLRWviLRNN1u3jLY3FINStrmNC2BkqoJwM9KAPg/4n/8FGPhNpWl32n/AAWtdb+MPjiSyupdPs9K8Pa/Z6DpzQws8moa1cX9hYalc2Nin+kzw6PZXInRDBLqGmqzXcP4CeL/ABXr/jnxRr3jDxTfy6n4i8R6pd6tq99MArTXt3K0kmyNQI4IIsiG2tolSG1t44reBEhiRF/ro8OeC/B3g6GW38I+E/DXhaCbHnQ+HNB0vQ4ZdvK+bHplrapJtJ43Kcdq/Nn/AIKGfsp+F/EfgLXPjj4J0W00fxv4RjGq+L49Lto7aHxZ4cEipqWoX9vCqQvrWho/9ptqpC3F1pVvfW16128Wm/ZQD//Z"></iron-image>
+              <h2>[[_computeFullName(userData.firstName, userData.lastName)]]</h2>
+            </div>
+            <div class="card-footer">
+              <paper-button class="primary block" raised on-tap="_toggleEdit">[[_computeButtonLabel(edit)]]</paper-button>
+            </div>
+          </div>
+        </template>
+        <template is="dom-if" if="[[!edit]]">
+          <div class="card">
+            <div class="card-content">
+              <h3>About Me</h3>
+              [[userData.aboutMe]]
+            </div>
+          </div>
+        </template>
+        <template is="dom-if" if="[[edit]]">
+          <div class="card">
+            <div class="card-content">
+              <div class="group">
+                <paper-input disabled value="[[userData.firstName]]" label="First Name"></paper-input>
+                <paper-input disabled value="[[userData.lastName]]" label="Last Name"></paper-input>
+              </div>
+              <paper-input value="{{userData.displayName}}" label="Nickname"></paper-input>
+              <div class="group">
+                <paper-input value="{{userData.birthPlace}}" label="Birthplace"></paper-input>
+                <paper-input type="date" value="{{userData.birthDate}}" label="Birthdate"></paper-input>
+              </div>
+              <paper-input type="tel" value="{{userData.phoneNumber}}" label="Phone Number"></paper-input>
+              <paper-textarea value="{{userData.aboutMe}}" label="About Me"></paper-textarea>
+              <label for="upload">Change Profile Picture</label>
+              <input type="file" id="upload" accept="image/*" on-change="_onFileChanged">
+              <p class="help-text">Recommended image size is 512 x 512 pixels. The maximum file size is 100 KB.</p>
+            </div>
+            <div class="card-footer buttons">
+              <paper-button raised class="primary" on-tap="_onSave">Save Changes</paper-button>
+              <paper-button on-tap="_toggleEdit">[[_computeButtonLabel(edit)]]</paper-button>
+            </div>
+          </div>
+        </template>
+      </main>
+    </div>
+  </template>
+  <script>
+    class FTSProfile extends Polymer.Element {
+
+      static get is() { return 'fts-profile'; }
+
+      static get properties() {
+        return {
+          route: Object,
+          routeData: Object,
+          user: {
+            type: Object,
+            observer: '_userChanged'
+          },
+          userData: Object,
+          edit: {
+            type: Boolean,
+            value: false,
+            observer: '_editChanged'
+          },
+          localDb: {
+            type: PouchDB,
+            value: new PouchDB('people')
+          },
+          remoteDb: {
+            computed: '_computeCloudantDb("people")'
+          }
+        };
+      }
+
+      ready() {
+        super.ready();
+        this.removeAttribute('unresolved');
+      }
+
+      _userChanged(user) {
+        if (user) {
+          let id = 'user_' + user.email;
+          let db = new PouchDB('people');
+          db.get(id).then(doc => this.set('userData', doc)).catch(err => console.log(err));
+        }
+      }
+
+      _editChanged(edit) {
+        if (!edit)
+          this.reset();
+      }
+
+      _toggleEdit() {
+        this.set('edit', !this.edit);
+      }
+
+      _onSave() {
+        let input = this.shadowRoot.querySelector('#upload');
+        let files = input.files;
+        if (files.length > 0) {
+          let file = files[0];
+          let deepPath = ['user', this.user.email, file.name].join('/');
+          let ref = firebase.storage().ref();
+          let userRef = ref.child(deepPath);
+          userRef.put(file).then(snapshot => {
+            this.set('userData.photoURL', snapshot.downloadURL);
+            this._saveChanges();
+          });
+        } else
+          this._saveChanges();
+      }
+
+      _saveChanges() {
+        let db = new PouchDB('people');
+        db.put(this.userData).then(response => {
+          this.dispatchEvent(new CustomEvent('notify-user', {
+            bubbles: true,
+            composed: true,
+            detail: { message: 'Changes saved.' }
+          }));
+          db.get('user_' + this.user.email).then(doc => {
+            this.set('userData', doc);
+
+            this.set('edit', false);
+          });
+          let remote = this._computeCloudantDb('people');
+          PouchDB.replicate(db, remote, {
+            checkpoint: false,
+            filter: 'filtered/current',
+            query_params: { email: this.user.email }
+          });
+        }).catch(function (err) {
+          console.log(err);
+        });
+      }
+
+      _onBirthdateValueChanged(event) {
+        let value = event.detail.value;
+        if (value !== '') {
+          let bd = new Date(value);
+          this.set('userData.birthDate', bd.getTime());
+        }
+      }
+
+      _onFileChanged(event) {
+        let input = event.currentTarget;
+        let size = input.files[0].size / 1024;
+        if (size > 100) {
+          this.dispatchEvent(new CustomEvent('notify-user', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              message: 'Maximum allowed size is 100 KB. Please select smaller file.'
+            }
+          }));
+          input.value = '';
+        }
+      }
+
+      _computeFullName(first, last) {
+        return last ? first + ' ' + last : first;
+      }
+
+      _computeProfilePictureURL(url) {
+        return url ? url : '/images/default.jpg';
+      }
+
+      _computeButtonLabel(edit) {
+        return edit ? 'Cancel' : 'Edit Profile';
+      }
+
+      _computeCloudantDb(name) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', name].join('/');
+        let options = {
+          ajax: {
+            headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      reset() {
+        let id = 'user_' + this.user.email;
+        this.localDb.get(id).then(doc => this.set('userData', doc));
+        try {
+          this.shadowRoot.querySelector('input#upload').value = '';
+        } catch (error) {
+          console.log(error);
+        }
+      }
+
+    }
+
+    window.customElements.define(FTSProfile.is, FTSProfile);
+  </script>
+</dom-module>

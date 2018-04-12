@@ -1,0 +1,500 @@
+<link rel="import" href="../../bower_components/app-route/app-route.html">
+<link rel="import" href="../../bower_components/iron-media-query/iron-media-query.html">
+<link rel="import" href="../../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../../bower_components/paper-dropdown-menu/paper-dropdown-menu-light.html">
+<link rel="import" href="../../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../../bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="../../bower_components/paper-tabs/paper-tab.html">
+<link rel="import" href="../../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymerfire/firebase-auth.html">
+<link rel="import" href="../activity-list/activity-list.html">
+<link rel="import" href="../comment-form/comment-form.html">
+<link rel="import" href="../common-styles/common-styles.html">
+<link rel="import" href="../post-item/post-item.html">
+
+<dom-module id="fts-class">
+  <template strip-whitespace>
+    <style include="common-styles"></style>
+    <style>
+      :host {
+        --paper-tabs-selection-bar-color: var(--primary-color);
+        --paper-tab-ink: var(--primary-color);
+        --paper-fab-background: var(--secondary-color);
+        --paper-tabs-container: {
+          background-color: var(--primary-background-color);
+        };
+        --paper-tab-content: {
+          color: var(--primary-text-color);
+        };
+        --paper-input-container-label: {
+          @apply --paper-font-body1;
+        };
+        --paper-input-container-input: {
+          @apply --paper-font-body1;
+        };
+
+        display: block;
+        margin-bottom: 86px;
+      }
+
+      [name=dashboard] {
+        overflow-x: auto;
+      }
+
+      .header {
+        background-position: center bottom;
+        background-repeat: no-repeat;
+        background-size: cover;
+        box-sizing: border-box;
+        width: 100%;
+        height: 270px;
+        position: relative;
+      }
+
+      .header>.header-content {
+        @apply --layout-vertical;
+        @apply --layout-center-center;
+
+        background-color: rgba(0, 0, 0, .25);
+        padding-left: 72px;
+        padding-right: 72px;
+        height: 100%;
+        color: white;
+        overflow: hidden;
+      }
+
+      h1 {
+        text-align: center;
+      }
+
+      .content {
+        @apply --layout;
+        @apply --layout-center-justified;
+
+        margin: 24px;
+      }
+
+      main,
+      aside {
+        @apply --layout-vertical;
+      }
+
+      main {
+        @apply --layout-flex;
+        
+        padding-bottom: 96px;
+        overflow: hidden;
+      }
+
+      main>* {
+        margin-bottom: 24px;
+      }
+
+      aside>* {
+        margin-right: 24px;
+        width: 276px;
+      }
+
+      paper-button {
+        --paper-button: {
+          @apply --paper-font-button;
+        };
+      }
+
+      paper-button:not([raised]) {
+        color: var(--primary-color);
+      }
+
+      paper-button[raised] {
+        background-color: var(--primary-color);
+        color: var(--primary-background-color);
+      }
+
+      paper-button[disabled] {
+        background-color: transparent !important;
+        color: var(--disabled-text-color) !important;
+      }
+
+      paper-dialog {
+        @apply --layout-vertical;
+
+        position: fixed;
+        top: 64px;
+        bottom: 0px;
+        left: 0px;
+        right: 0px;
+      }
+
+      paper-dialog .scrollable {
+        @apply --layout-flex;
+
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      paper-icon-button.red {
+        --paper-icon-button: {
+          color: var(--paper-red-500);
+        };
+      }
+
+      paper-icon-button.blue {
+        --paper-icon-button: {
+          color: var(--paper-blue-500);
+        };
+      }
+
+      .paper-dialog-buttons.left-aligned {
+        @apply --layout-start-justified;
+      }
+
+      .paper-dialog-buttons:last-child {
+        border-top: 1px solid var(--divider-color);
+      }
+
+      .backdrop {
+        z-index: 2;
+      }
+
+      input+p,
+      .help-block {
+        @apply --paper-font-caption;
+
+        margin-top: 0px;
+        margin-bottom: 0px;
+      }
+
+      .announcement {
+        @apply --paper-font-headline;
+
+        text-align: center;
+        margin-top: 0px;
+        margin-bottom: 0px;
+      }
+
+      post-item {
+        margin-bottom: 24px;
+      }
+    </style>
+
+    <app-route route="[[route]]" pattern="/:key" data="{{routeData}}"></app-route>
+    <iron-media-query query="(max-width: 800px)" query-matches="{{narrow}}"></iron-media-query>
+    <firebase-auth user="{{user}}"></firebase-auth>
+
+    <div>
+      <div class="header" style$="background-image:url([[_computeHeaderBackground(project.header_background)]])">
+        <div class="header-content">
+          <h1>
+            <strong>[[project.title]]</strong>
+          </h1>
+        </div>
+      </div>
+    </div>
+    <div class="content">
+      <template is="dom-if" if="[[!narrow]]">
+        <aside>
+          <activity-list key="[[routeData.key]]" class="paper-material" elevation="1"></activity-list>
+        </aside>
+      </template>
+      <main>
+        <template is="dom-if" if="[[narrow]]">
+          <activity-list key="[[routeData.key]]" class="paper-material" elevation="1"></activity-list>
+        </template>
+        <paper-tabs selected="{{view}}" attr-for-selected="name">
+          <paper-tab name="post">Posts</paper-tab>
+          <paper-tab name="dashboard">Dashboard</paper-tab>
+        </paper-tabs>
+        <iron-pages selected="[[view]]" attr-for-selected="name" fallback-selection="post">
+          <div name="post">
+            <template is="dom-repeat" items="[[postList]]" as="post">
+              <post-item data="[[post.doc]]" class="paper-material" elevation="1">
+                <comment-form></comment-form>
+              </post-item>
+            </template>
+            <p class="announcement" hidden$="[[_shouldRenderNoPostIndicator]]">There are no post yet. Be the first to post something!</p>
+          </div>
+          <div name="dashboard">
+            <fts-dashboard key="[[routeData.key]]"></fts-dashboard>
+          </div>
+        </iron-pages>
+      </main>
+    </div>
+    <div class="backdrop" hidden$="[[!newPostOpened]]"></div>
+    <paper-fab class="fab" icon="create" on-tap="toggleDialog"></paper-fab>
+    <paper-dialog id="newpost" opened="{{newPostOpened}}" entry-animation="scale-up-animation" exit-animation="scale-down-animation" no-cancel-on-outside-click no-cancel-on-esc-key>
+      <h2>New Post</h2>
+      <div class="scrollable">
+        <paper-textarea no-label-float char-counter value="{{newPost.content}}" placeholder="Share something" maxlength="300"></paper-textarea>
+        <p hidden$="[[!newPost.attachmentURL]]" class="help-block">Attachment: [[newPost.attachmentURL]]</p>
+      </div>
+      <div class="paper-dialog-buttons left-aligned">
+        <paper-icon-button disabled="[[offline]]" class="red" icon="photo" on-tap="toggleUpload"></paper-icon-button>
+        <paper-icon-button class="blue" icon="movie" on-tap="toggleVideo"></paper-icon-button>
+      </div>
+      <div class="paper-dialog-buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button dialog-confirm disabled="[[_shouldDisablePostSubmitButton]]" raised on-tap="_handleSubmitPost">Submit</paper-button>
+      </div>
+    </paper-dialog>
+    <paper-dialog id="insertvideo" opened="{{insertVideoOpened}}" no-cancel-on-outside-click no-cancel-on-esc-key>
+      <h2>Attach YouTube Video</h2>
+      <div class="scrollable">
+        <paper-input id="ytlink" no-label-float placeholder="YouTube URL"></paper-input>
+      </div>
+      <div class="paper-dialog-buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button dialog-confirm raised on-tap="_setAttachment">Attach</paper-button>
+      </div>
+    </paper-dialog>
+    <paper-dialog id="insertimage" opened="{{insertImageOpened}}" no-cancel-on-outside-click no-cancel-on-esc-key>
+      <h2>Attach Image</h2>
+      <div class="scrollable">
+        <input type="file" id="file" accept="image/*" on-change="_onFileChange">
+        <p>Maximum file size is 100 KB</p>
+      </div>
+      <div class="paper-dialog-buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button disabled="[[offline]]" raised on-tap="_upload">Attach</paper-button>
+      </div>
+    </paper-dialog>
+  </template>
+  <script>
+    class FtsClass extends Polymer.Element {
+      
+      static get is() { return 'fts-class'; }
+
+      static get properties() {
+        return {
+          route: Object,
+          routeData: Object,
+          project: Object,
+          newPost: Object,
+          postList: {
+            type: Array,
+            value: () => []
+          },
+          local: {
+            type: PouchDB,
+            value: new PouchDB('project')
+          },
+          postLocal: {
+            type: PouchDB,
+            value: new PouchDB('post')
+          },
+          view: {
+            type: String,
+            value: 'post',
+            observer: '_viewChanged'
+          },
+          _syncTask: {
+            computed: '_computeSyncTask(routeData.key)'
+          },
+          offline: {
+            type: Boolean,
+            observer: '_offlineChanged'
+          },
+          _shouldRenderNoPostIndicator: {
+            computed: '_computeShouldRenderNoPostIndicator(postList.length)'
+          },
+          _shouldDisablePostSubmitButton: {
+            computed: '_computeShouldDisablePostSubmitButton(newPost.content, newPost.attachmentURL)'
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routeKeyChanged(routeData.key)',
+          '_dialogOpenedChanged(newPostOpened)',
+          '_videoOpenedChanged(insertVideoOpened)',
+          '_imageOpenedChanged(insertImageOpened)'
+        ];
+      }
+
+      _routeKeyChanged(key) {
+        if (Boolean(key)) {
+          this.local.get(key).then((doc) => this.set('project', doc), (error) => this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: { type: 'error', message: error.message }
+          })));
+          this._initPostReplication(key);
+          this._initCommentReplication(key);
+        }
+      }
+
+      _videoOpenedChanged(opened) {
+        if (!opened) this.$.ytlink.value = '';
+        else this.set('newPost.attachmentType', 'youtube');
+      }
+
+      _imageOpenedChanged(opened) {
+        if (!opened) this.$.file.value = '';
+        else this.set('newPost.attachmentType', 'image');
+      }
+
+      _dialogOpenedChanged(opened) {
+        if (!opened) this.set('newPost', { type: 'post' });
+      }
+
+      _viewChanged(view) {
+        if (view === 'dashboard') {
+          let resolvedUrl = ['src', 'fts-' + view, 'fts-' + view + '.html'].join('/');
+          Polymer.importHref(resolvedUrl, null, null, true);
+        }
+      }
+
+      _offlineChanged(offline, oldOffline) {
+        if ((oldOffline === true) && (offline === false)) {
+          let key = this.get('routeData.key');
+          this._initPostReplication(key);
+          this._initCommentReplication(key);
+        }
+      }
+
+      _initCloudantDb(dbname) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', dbname].join('/');
+        let options = {
+          ajax: {
+            headers: { Authorization: "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      _initPostReplication(id) {
+        let remote = this._initCloudantDb('post');
+        PouchDB.replicate(remote, this.postLocal, {
+          checkpoint: false,
+          filter: 'post/filtered',
+          query_params: { current: id }
+        }).then((info) => this.__fetchPosts(id), (error) => console.error(error.message));
+      }
+
+      _initCommentReplication(id) {
+        let remote = this._initCloudantDb('comment');
+        let local = new PouchDB('comment');
+        PouchDB.replicate(remote, local, {
+          checkpoint: false,
+          filter: 'comment/filtered',
+          query_params: { id: id }
+        }).then((info) => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          composed: true,
+          detail: { message: 'Class comments updated' }
+        })), (error) => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          composed: true,
+          detail: { type: 'error', message: error.message }
+        })));
+      }
+
+      _computeShouldRenderNoPostIndicator(count) {
+        return count > 0;
+      }
+
+      _computeShouldDisablePostSubmitButton(content, url) {
+        return (Boolean(content) === false) && (Boolean(url) === false);
+      }
+
+      _computeHeaderBackground(url) {
+        return Boolean(url) ? url : Polymer.rootPath + 'images/bg_banner03.jpg';
+      }
+
+      _computeSyncTask(key) {
+        let remote = this._initCloudantDb('post');
+        return Boolean(key) ? PouchDB.sync(remote, this.postLocal, {
+          checkpoint: false,
+          live: true,
+          retry: true,
+          filter: 'post/filtered',
+          query_params: { current: key }
+        }).on('change', (info) => this.set('hasNewPost', true)) : undefined;
+      }
+
+      cancelSyncTask() {
+        this.get('_syncTask').cancel();
+        console.info('Post synchronization task canceled');
+      }
+
+      toggleDialog() {
+        this.$.newpost.toggle();
+      }
+
+      toggleVideo() {
+        this.$.insertvideo.toggle();
+      }
+
+      toggleUpload() {
+        this.$.insertimage.toggle();
+      }
+
+      _onFileChange(e) {
+        let input = e.currentTarget;
+        if (input.files.length > 0) {
+          let size = input.files.item(0).size / 1024;
+          if (size > 100) {
+            input.value = '';
+            this.dispatchEvent(new CustomEvent('announce', {
+              bubbles: true,
+              composed: true,
+              detail: { type: 'error', message: 'Maximum allowed size is 100 KB. Please select another image.' }
+            }));
+          }
+        }
+      }
+
+      _upload(e) {
+        let fileList = this.$.file.files;
+        if (fileList.length > 0) {
+          let file = fileList.item(0);
+          let storageRef = firebase.storage().ref();
+          let path = ['project', this.get('routeData.key'), 'user', this.get('user.email'), 'post', Date.now().toString() + '-' + file.name].join('/');
+          let attachmentRef = storageRef.child(path);
+          attachmentRef.put(file).then((snapshot) => {
+            this.set('newPost.attachmentURL', snapshot.downloadURL);
+            this.toggleUpload();
+          });
+        } else
+          this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: { type: 'error', message: 'Please choose an image' }
+          }));
+      }
+
+      _setAttachment(e) {
+        this.set('newPost.attachmentURL', this.$.ytlink.value);
+      }
+
+      _handleSubmitPost(e) {
+        this.set('newPost.creator', 'user_' + this.get('user.email'));
+        this.set('newPost.parent', this.get('routeData.key'));
+        this.set('newPost.timestamp', Date.now());
+        this.set('newPost._id', [this.get('newPost.type'), this.get('newPost.parent'), this.get('newPost.timestamp'), this.get('newPost.creator')].join('_'));
+        let event = new CustomEvent('submit-post', {
+          bubbles: true,
+          composed: true,
+          detail: this.get('newPost')
+        });
+        this.dispatchEvent(event);
+      }
+
+      __fetchPosts(key) {
+        this.postLocal.allDocs({
+          descending: true,
+          include_docs: true,
+          startkey: 'post_' + key + '\ufff0',
+          endkey: 'post_' + key
+        }).then((result) => this.set('postList', result.rows), (error) => console.error(error.message));
+      }
+
+    }
+
+    window.customElements.define(FtsClass.is, FtsClass);
+  </script>
+</dom-module>

@@ -1,0 +1,329 @@
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../../bower_components/iron-media-query/iron-media-query.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../../bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymerfire/firebase-auth.html">
+<link rel="import" href="../common-styles/common-styles.html">
+
+<dom-module id="fts-profile">
+  <template strip-whitespace>
+    <style include="common-styles"></style>
+    <style>
+      :host {
+        @apply --paper-font-body1;
+        
+        --paper-input-container-input: {
+          @apply --paper-font-body1;
+        };
+      }
+
+      .content {
+        @apply --layout;
+        @apply --layout-center-justified;
+
+        margin: 24px;
+      }
+
+      .content main {
+        @apply --layout-flex;
+
+        overflow: hidden;
+      }
+
+      .paper-material {
+        background-color: #ffffff;
+        margin-bottom: 24px;
+      }
+
+      .paper-content {
+        padding: 24px;
+      }
+
+      .paper-footer {
+        @apply --layout-horizontal;
+        @apply --layout-end-justified;
+
+        border-top: 1px solid var(--divider-color);
+        padding: 12px;
+      }
+
+      .input-group {
+        @apply --layout-horizontal;
+      }
+
+      .input-group>* {
+        @apply --layout-flex;
+      }
+
+      .block {
+        width: 100%;
+      }
+
+      .paper-material iron-image {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        margin-bottom: 4px;
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        border: 4px solid var(--divider-color);
+      }
+
+      h2 {
+        @apply --paper-font-title;
+
+        text-align: center;
+        margin: 0px;
+      }
+
+      paper-button+paper-button {
+        margin-left: 4px;
+      }
+
+      paper-button {
+        margin-left: 0px;
+        margin-right: 0px;
+
+        --paper-button: {
+          @apply --paper-font-button;
+
+          text-align: center;
+        };
+      }
+
+      paper-button[raised] {
+        background-color: var(--primary-color);
+        color: var(--primary-background-color);
+      }
+
+      paper-button:not([raised]) {
+        color: var(--primary-color);
+      }
+
+      aside {
+        margin-right: 24px;
+        width: 300px;
+      }
+
+      p {
+        margin: 0px;
+      }
+
+      .help-block {
+        @apply --paper-font-caption;
+      }
+
+      label {
+        @apply --paper-font-body2;
+      }
+
+      label+input {
+        display: block;
+      }
+
+      *+label {
+        margin-top: 1em;
+      }
+
+      h3 {
+        @apply --paper-font-body2;
+
+        margin: 0px;
+      }
+    </style>
+
+    <iron-media-query query="(max-width: 800px)" query-matches="{{narrow}}"></iron-media-query>
+    <firebase-auth user="{{user}}"></firebase-auth>
+
+    <div class="content">
+      <template is="dom-if" if="[[!narrow]]">
+        <aside hidden$="[[editing]]">
+          <div class="paper-material" elevation="1">
+            <div class="paper-content">
+              <iron-image preload fade src="[[_computeProfilePictureURL(userData.photoURL)]]" sizing="cover" placeholder="data:image/jpeg;base64,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"></iron-image>
+              <h2>[[_computeFullName(userData.firstName, userData.lastName)]]</h2>
+            </div>
+            <div class="paper-footer">
+              <paper-button raised class="block" on-tap="toggleEditing">[[_computeButtonLabel(editing)]]</paper-button>
+            </div>
+          </div>
+        </aside>
+      </template>
+      <main>
+        <template is="dom-if" if="[[narrow]]">
+          <div class="paper-material" elevation="1">
+            <div class="paper-content">
+              <iron-image preload fade src="[[_computeProfilePictureURL(userData.photoURL)]]" sizing="cover" placeholder="data:image/jpeg;base64,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"></iron-image>
+              <h2>[[_computeFullName(userData.firstName, userData.lastName)]]</h2>
+            </div>
+            <div class="paper-footer">
+              <paper-button raised class="block" on-tap="toggleEditing">[[_computeButtonLabel(editing)]]</paper-button>
+            </div>
+          </div>
+        </template>
+        <div hidden$="[[editing]]" class="paper-material" elevation="1">
+          <div class="paper-content">
+            <h3>About Me</h3>
+            <p>[[userData.aboutMe]]</p>
+            <h3>Birth</h3>
+            <p>[[userData.birthPlace]], [[_computeReadableDate(userData.birthDate)]]</p>
+            <h3>Phone Number</h3>
+            <p>[[userData.phoneNumber]]</p>
+          </div>
+        </div>
+        <div hidden$="[[!editing]]" class="paper-material" elevation="1">
+          <div class="paper-content">
+            <div class="input-group">
+              <paper-input disabled value="[[userData.firstName]]" label="First Name"></paper-input>
+              <paper-input disabled value="[[userData.lastName]]" label="Last Name"></paper-input>
+            </div>
+            <paper-input value="{{userData.displayName}}" label="Nickname"></paper-input>
+            <div class="input-group">
+              <paper-input value="{{userData.birthPlace}}" label="Birthplace"></paper-input>
+              <paper-input type="date" value="{{userData.birthDate}}" label="Birthdate"></paper-input>
+            </div>
+            <paper-input type="tel" value="{{userData.phoneNumber}}" label="Phone Number"></paper-input>
+            <paper-textarea value="{{userData.aboutMe}}" label="About Me"></paper-textarea>
+            <label for="upload">Change Profile Picture</label>
+            <input type="file" id="upload" accept="image/*" on-change="_onFileChanged">
+            <p class="help-block">Recommended image size is 512 x 512 pixels. The maximum file size is 100 KB.</p>
+          </div>
+          <div class="paper-footer">
+            <paper-button on-tap="toggleEditing">[[_computeButtonLabel(editing)]]</paper-button>
+            <paper-button raised on-tap="_handleSave">Save changes</paper-button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </template>
+  <script>
+    class FtsProfile extends Polymer.Element {
+
+      static get is() { return 'fts-profile'; }
+
+      static get properties() {
+        return {
+          user: {
+            type: Object,
+            observer: '_userChanged'
+          },
+          userData: Object,
+          editing: {
+            type: Boolean,
+            value: false,
+            observer: '_editingChanged'
+          },
+          local: {
+            type: PouchDB,
+            value: new PouchDB('people')
+          }
+        };
+      }
+
+      _userChanged(user) {
+        if (Boolean(user)) this.local.get('user_' + user.email).then((doc) => this.set('userData', doc), (error) => console.error(error));
+      }
+
+      _editingChanged(editing) {
+        if (!editing) this.reset();
+      }
+
+      _computeProfilePictureURL(url) {
+        return Boolean(url) ? url : '/images/default.jpg';
+      }
+
+      _computeFullName(first, last) {
+        return Boolean(last) ? first + ' ' + last : first;
+      }
+
+      _computeReadableDate(date) {
+        return new Date(date).toLocaleDateString({}, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+      }
+
+      _computeButtonLabel(editing) {
+        return editing ? 'Cancel' : 'Edit Profile';
+      }
+
+      toggleEditing() {
+        this.set('editing', !this.editing);
+      }
+
+      reset() {
+        this._initUserData();
+        this.$.upload.value = '';
+      }
+
+      _initCloudantDb(dbname) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', dbname].join('/');
+        let options = {
+          ajax: {
+            headers: { Authorization: "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      _initUserData() {
+        if (Boolean(this.get('user.email'))) {
+          let id = 'user_' + this.get('user.email');
+          this.local.get(id).then((doc) => this.setProperties({
+            userData: doc,
+            editing: false
+          }), (error) => this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: { type: 'error', message: error.message }
+          })));
+        }
+      }
+
+      _onFileChanged(e) {
+        let input = e.target;
+        let size = input.files[0].size / 1024;
+        if (size > 100) {
+          input.value = '';
+          this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              type: 'error',
+              message: 'Maximum allowed size is 100 KB. Please choose smaller image.'
+            }
+          }));
+        }
+      }
+
+      _handleSave() {
+        this.local.put(this.userData).then((info) => {
+          this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              message: 'Changes saved'
+            }
+          }));
+          this._initUserData();
+          let remote = this._initCloudantDb('people');
+          PouchDB.replicate(this.local, remote, {
+            checkpoint: false,
+            doc_ids: [this.userData._id]
+          });
+        }, (error) => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          composed: true,
+          detail: { type: 'error', message: error.message }
+        })));
+      }
+    }
+
+    window.customElements.define(FtsProfile.is, FtsProfile);
+  </script>
+</dom-module>

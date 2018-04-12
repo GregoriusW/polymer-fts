@@ -1,0 +1,97 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-image/iron-image.html">
+
+<dom-module id="fts-comment-item">
+  <template>
+    <style>
+      .comment {
+        @apply --layout-horizontal;
+        background-color: white;
+        color: var(--paper-grey-900);
+        border-top: 1px solid var(--light-theme-divider-color);
+        padding: 8px 8px 4px;
+      }
+
+      iron-image {
+        width: 40px;
+        height: 40px;
+      }
+
+      .content {
+        @apply --layout-vertical;
+        @apply --layout-flex;
+        margin-left: 8px;
+      }
+
+      .content>.header {
+        @apply --paper-font-body2;
+      }
+
+      .content p {
+        @apply --paper-font-body1;
+        margin: 0;
+      }
+
+      .header .secondary {
+        @apply --paper-font-caption;
+        color: var(--secondary-text-color);
+      }
+    </style>
+    <div class="comment">
+      <iron-image preload fade src="[[creator.photoURL]]" sizing="cover"></iron-image>
+      <div class="content">
+        <div class="header">
+          [[_computeFullName(creator.firstName, creator.lastName)]]
+          <span class="secondary">[[_computeTimestamp(commentData.timestamp)]]</span>
+        </div>
+        <p>[[commentData.content]]</p>
+      </div>
+    </div>
+  </template>
+  <script>
+    class FTSCommentItem extends Polymer.Element {
+
+      static get is() { return 'fts-comment-item'; }
+
+      static get properties() {
+        return {
+          identifier: {
+            type: String,
+            observer: '_identifierChanged'
+          },
+          creator: {
+            type: Object,
+            readOnly: true
+          },
+          commentData: {
+            type: Object,
+            readOnly: true
+          }
+        };
+      }
+
+      _identifierChanged(id) {
+        let db = new PouchDB('comment');
+        db.get(id).then(doc => {
+          this._setCommentData(doc);
+          var people = new PouchDB('people');
+          people.get(doc.creator).then(person => {
+            this._setCreator(person);
+          });
+        });
+      }
+
+      _computeFullName(first, last) {
+        return last ? first + ' ' + last : first;
+      }
+
+      _computeTimestamp(ms) {
+        let options = { day: 'numeric', month: 'short' };
+        return new Date(ms).toLocaleDateString({}, options);
+      }
+
+    }
+
+    window.customElements.define(FTSCommentItem.is, FTSCommentItem);
+  </script>
+</dom-module>

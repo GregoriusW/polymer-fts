@@ -1,0 +1,60 @@
+<link rel="import" href="../../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+
+<dom-module id="comment-form">
+  <template>
+    <style>
+      :host {
+        --paper-button: {
+          @apply --paper-font-button;
+        };
+      }
+
+      [hidden] {
+        display: none !important;
+      }
+
+      .trigger,
+      .form {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+      }
+
+      .trigger:hover {
+        color: var(--primary-color);
+      }
+    </style>
+    <div hidden$="[[opened]]" class="trigger">
+      <iron-icon icon="comment"></iron-icon>Add comment&hellip;
+    </div>
+    <div hidden$="[[!opened]]" class="form">
+      <paper-input no-label-float value="{{value}}" placeholder="Press ENTER to submit"></paper-input>
+      <paper-button on-tap="toggleOpened">Cancel</paper-button>
+    </div>
+  </template>
+  <script>
+    class CommentForm extends Polymer.Element {
+
+      static get is() { return 'comment-form'; }
+
+      static get properties() {
+        return {
+          opened: {
+            type: Boolean,
+            reflectToAttribute: true,
+            value: false
+          }
+        };
+      }
+
+      toggleOpened() {
+        this.set('opened', !this.opened);
+      }
+
+    }
+
+    window.customElements.define(CommentForm.is, CommentForm);
+  </script>
+</dom-module>

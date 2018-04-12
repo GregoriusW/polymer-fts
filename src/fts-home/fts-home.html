@@ -1,0 +1,91 @@
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymerfire/firebase-auth.html">
+<link rel="import" href="../fts-home-item/fts-home-item.html">
+
+<dom-module id="fts-home">
+  <template strip-whitespace>
+    <style>
+      .content {
+        @apply --layout;
+        @apply --layout-wrap;
+
+        padding-left: 24px;
+        padding-top: 24px;
+      }
+    </style>
+
+    <firebase-auth user="{{user}}"></firebase-auth>
+
+    <div class="content">
+      <template is="dom-repeat" items="[[projectList]]" as="project">
+        <fts-home-item data="[[project.doc]]"></fts-home-item>
+      </template>
+    </div>
+  </template>
+  <script>
+    class FtsHome extends Polymer.Element {
+
+      static get is() { return 'fts-home'; }
+
+      static get properties() {
+        return {
+          user: {
+            type: Object,
+            observer: '_userChanged'
+          },
+          projectList: {
+            type: Array,
+            readOnly: true,
+            value: () => []
+          },
+          db: {
+            type: PouchDB,
+            value: new PouchDB('project')
+          }
+        };
+      }
+
+      _initCloudantDb(dbname) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', dbname].join('/');
+        let options = {
+          ajax: {
+            headers: { Authorization: "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      _userChanged(user) {
+        this.set('projectList', []);
+        if (Boolean(user)) {
+          if (!navigator.onLine) {
+            this.db.query('opened-projects', {
+              include_docs: true,
+              key: 'user_' + user.email
+            }).then((result) => this._setProjects(result.rows));
+          } else {
+            let remote = this._initCloudantDb('project');
+            PouchDB.replicate(remote, this.db, {
+              checkpoint: false,
+              filter: 'opened-projects/user',
+              query_params: { id: 'user_' + user.email }
+            }).then((info) => this.dispatchEvent(new CustomEvent('announce', {
+              bubbles: true,
+              composed: true,
+              detail: { message: 'Class list updated' }
+            })), (error) => console.log(error)).finally(() => {
+              this.db.query('opened-projects', {
+                include_docs: true,
+                key: 'user_' + user.email
+              }).then((result) => this._setProjectList(result.rows));
+            });
+          }
+        }
+      }
+
+    }
+
+    window.customElements.define(FtsHome.is, FtsHome);
+  </script>
+</dom-module>

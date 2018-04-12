@@ -1,0 +1,41 @@
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+
+<dom-module id="person-item-lite">
+  <template strip-whitespace>
+    [[_computeFullName(data.firstName, data.lastName)]]
+  </template>
+  <script>
+    class PersonItemLite extends Polymer.Element {
+
+      static get is() { return 'person-item-lite'; }
+
+      static get properties() {
+        return {
+          db: {
+            type: PouchDB,
+            value: new PouchDB('people')
+          },
+          key: {
+            type: String,
+            observer: '_keyChanged'
+          },
+          data: {
+            type: Object,
+            readOnly: true
+          }
+        };
+      }
+
+      _keyChanged(key) {
+        if (Boolean(key)) this.db.get(key).then((doc) => this._setData(doc));
+      }
+
+      _computeFullName(first, last) {
+        return Boolean(last) ? first + ' ' + last : first;
+      }
+
+    }
+
+    window.customElements.define(PersonItemLite.is, PersonItemLite);
+  </script>
+</dom-module>

@@ -1,0 +1,144 @@
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../fts-icons/fts-icons.html">
+
+<dom-module id="fts-dashboard-item">
+  <template strip-whitespace>
+    <style>
+      :host {
+        @apply --layout-horizontal;
+        @apply --layout-center-center;
+
+        --paper-icon-button-disabled-text: #ffffff;
+        --paper-icon-button-ink-color: #ffffff;
+        --iron-icon-fill-color: #ffffff;
+        --iron-icon-stroke-color: #ffffff;
+      }
+
+      paper-icon-button {
+        border-radius: 50%;
+        height: 32px;
+        width: 32px;
+
+        --paper-icon-button-disabled: {
+          background-color: var(--disabled-text-color);
+        };
+      }
+
+      .green {
+        --paper-icon-button: {
+          background-color: #4caf50;
+        };
+      }
+
+      .red {
+        --paper-icon-button: {
+          background-color: #f44336;
+        };
+      }
+    </style>
+
+    <paper-icon-button icon="[[_computeCrossedIcon(loading)]]" hidden="[[_renderTrue]]" disabled="[[loading]]" class="red" on-tap="_refresh"></paper-icon-button>    
+    <paper-icon-button icon="[[_computeCheckedIcon(loading)]]" hidden="[[_renderFalse]]" disabled="[[loading]]" class="green" on-tap="_refresh"></paper-icon-button>
+  </template>
+  <script>
+    class FtsDashboardItem extends Polymer.Element {
+
+      static get is() { return 'fts-dashboard-item'; }
+
+      static get properties() {
+        return {
+          activity: String,
+          creator: String,
+          local: {
+            type: PouchDB,
+            value: new PouchDB('activity_document')
+          },
+          remote: {
+            type: PouchDB,
+            computed: '_initCloudantDb("activity_document")'
+          },
+          _renderTrue: {
+            type: Boolean,
+            readOnly: true,
+            value: false
+          },
+          _renderFalse: {
+            type: Boolean,
+            readOnly: true,
+            value: false
+          },
+          loading: {
+            type: Boolean,
+            readOnly: true,
+            value: false
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_isDocumentExist(activity, creator)'
+        ];
+      }
+
+      _isDocumentExist(activity, creator) {
+        if (Boolean(activity) && Boolean(creator)) {
+          let key = ['document', activity, creator].join('_');
+          this.local.allDocs({
+            startkey: key,
+            endkey: key + '\ufff0'
+          }).then((result) => {
+            if (result.rows.length > 0) this.setProperties({
+              loading: false,
+              _renderTrue: true,
+              _renderFalse: false
+            }, true);
+            else this.setProperties({
+              loading: false,
+              _renderTrue: false,
+              _renderFalse: true
+            }, true);
+          });
+        }
+      }
+
+      _computeCheckedIcon(busy) {
+        return busy ? 'sync' : 'done';
+      }
+
+      _computeCrossedIcon(busy) {
+        return busy ? 'sync' : 'clear';
+      }
+
+      _computeCheckedStyle(busy) {
+        return busy ? 'disabled' : 'green';
+      }
+
+      _computeCrossedStyle(busy) {
+        return busy ? 'disabled' : 'red';
+      }
+
+      _initCloudantDb(dbname) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', dbname].join('/');
+        let options = {
+          ajax: {
+            headers: { Authorization: "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      _refresh() {
+        this._setLoading(true);
+        PouchDB.replicate(this.remote, this.local, {
+          checkpoint: false,
+          filter: 'document/parent',
+          query_params: { parent: this.activity }
+        }).then((info) => this._isDocumentExist(this.activity, this.creator));
+      }
+    }
+
+    window.customElements.define(FtsDashboardItem.is, FtsDashboardItem);
+  </script>
+</dom-module>

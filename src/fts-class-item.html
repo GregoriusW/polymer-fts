@@ -1,0 +1,144 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="fts-styles.html">
+
+<dom-module id="fts-class-item">
+  <template>
+    <style include="fts-styles">
+      .cell {
+        @apply --layout;
+        @apply --layout-vertical;
+        width: 300px;
+        height: 300px;
+        margin-bottom: 24px;
+        margin-right: 24px;
+        overflow: hidden;
+        position: relative;
+        text-align: left;
+      }
+
+      .cell:hover {
+        @apply --shadow-transition;
+        @apply --shadow-elevation-8dp;
+      }
+
+      .cell>.header {
+        background-color: var(--paper-teal-500);
+        color: #fff;
+        position: relative;
+      }
+
+      .cell>paper-dialog-scrollable {
+        @apply --layout-flex;
+        --paper-dialog-scrollable: {
+          @apply --paper-font-body1;
+          padding: 12px 16px;
+        }
+      }
+
+      .header>.header-content {
+        @apply --layout;
+        @apply --layout-vertical;
+        @apply --layout-justified;
+        background-image: url('/images/LogoOnlyWhiteAlpha.png');
+        background-size: contain;
+        background-position: right bottom;
+        background-repeat: no-repeat;
+        height: 100px;
+        padding: 16px 16px 12px 8px;
+        position: relative;
+      }
+
+      .header>.header-title {
+        @apply --layout;
+      }
+
+      .header-title h2 {
+        @apply --paper-font-subhead;
+        overflow: hidden;
+        padding: 0 8px;
+      }
+
+      .header-title a {
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .header-title .ellips {
+        text-overflow: ellipsis;
+        overflow: hidden;
+        white-space: nowrap;
+        display: block;
+      }
+
+      .header-title .title {
+        @apply --paper-font-title;
+      }
+    </style>
+
+    <div class="card cell">
+      <div class="header">
+        <div class="header-content">
+          <div class="header-title">
+            <h2>
+              <a href$="[[rootPath]]class/[[identifier]]">
+                <div class="ellips title" title$="[[data.title]]">[[data.title]]</div>
+                <div class="ellips">[[_getPluralize(data.participants.length)]]</div>
+              </a>
+            </h2>
+          </div>
+        </div>
+      </div>
+      <paper-dialog-scrollable>
+        [[data.description]]
+      </paper-dialog-scrollable>
+    </div>
+  </template>
+  <script>
+    class FTSClassItem extends Polymer.Element {
+
+      static get is() { return 'fts-class-item'; }
+
+      static get properties() {
+        return {
+          db: {
+            type: PouchDB,
+            value: new PouchDB('project')
+          },
+          identifier: {
+            type: String,
+            observer: '_identifierChanged'
+          },
+          data: {
+            type: Object,
+            readOnly: true
+          }
+        };
+      }
+
+      _identifierChanged(id) {
+        this.db.get(id).then((doc) => {
+          let ids = doc.faculty_members.concat(doc.participants);
+          this._replicatePeopleData(ids);
+          this._setData(doc);
+        });
+      }
+
+      _getPluralize(length) {
+        return length + ' ' + (length === 1 ? 'participant' : 'participants');
+      }
+
+      _replicatePeopleData(ids) {
+        let local = new PouchDB('people');
+        let remote = new PouchDB('https://fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com/people', { ajax: { headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" } } });
+        PouchDB.replicate(remote, local, {
+          checkpoint: false,
+          doc_ids: ids
+        });
+      }
+
+    }
+
+    window.customElements.define(FTSClassItem.is, FTSClassItem);
+  </script>
+</dom-module>

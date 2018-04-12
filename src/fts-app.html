@@ -1,0 +1,481 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-app.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-auth.html">
+<link rel="import" href="../bower_components/app-route/app-location.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-drawer/app-drawer.html">
+<link rel="import" href="../bower_components/app-layout/app-header-layout/app-header-layout.html">
+<link rel="import" href="../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../bower_components/app-layout/app-scroll-effects/app-scroll-effects.html">
+<link rel="import" href="../bower_components/app-layout/app-toolbar/app-toolbar.html">
+<link rel="import" href="../bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="fts-icons.html">
+<link rel="import" href="fts-login.html">
+
+<link rel="lazy-import" href="fts-home.html">
+<link rel="lazy-import" href="fts-class.html">
+<link rel="lazy-import" href="fts-post.html">
+<link rel="lazy-import" href="fts-activity.html">
+<link rel="lazy-import" href="fts-profile.html">
+<link rel="lazy-import" href="fts-preview.html">
+<link rel="lazy-import" href="fts-404.html">
+
+<dom-module id="fts-app">
+  <template>
+    <style>
+       :host {
+        --primary-color: var(--paper-teal-700);
+        --accent-color: var(--paper-yellow-500);
+
+        --app-drawer-width: 320px;
+      }
+
+       :host([page=home]) .back {
+        display: none !important;
+      }
+
+       :host(:not([page=home])) [drawer-toggle] {
+        display: none !important;
+      }
+
+      app-header {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      .drawer-list {
+        @apply --layout-vertical;
+        overflow: hidden;
+      }
+
+      .drawer-list img {
+        max-width: 250px;
+        display: block;
+        margin: 10px auto;
+      }
+
+      .drawer-list a {
+        @apply --paper-font-menu;
+        display: block;
+        text-decoration: none;
+        color: var(--primary-text-color);
+        line-height: 48px;
+        padding: 0px 24px;
+        opacity: 0.7;
+      }
+
+      .drawer-list a:hover {
+        opacity: 1;
+        background-color: var(--accent-color);
+      }
+
+      .drawer-list>a iron-icon {
+        margin-right: 24px;
+      }
+
+      .drawer-list>a.iron-selected {
+        font-weight: 900;
+      }
+    </style>
+
+    <app-location route="{{route}}" url-space-regex="^[[rootPath]]"></app-location>
+    <app-route route="{{route}}" pattern="[[rootPath]]:page" data="{{routeData}}" tail="{{subroute}}"></app-route>
+    <firebase-app api-key="AIzaSyC8i-D_BWb3RrgWuZH5QEzNNHt6UM_Hl1g" auth-domain="kmol-sandbox.firebaseapp.com" database-url="https://kmol-sandbox.firebaseio.com"
+      messaging-sender-id="291121202475" storage-bucket="kmol-sandbox.appspot.com"></firebase-app>
+    <firebase-auth id="auth" user="{{user}}" on-user-changed="_replicateUser"></firebase-auth>
+
+    <template is="dom-if" if="[[!user]]">
+      <fts-login></fts-login>
+    </template>
+    <template is="dom-if" if="[[user]]">
+      <app-drawer-layout force-narrow fullbleed>
+        <app-drawer id="drawer" slot="drawer" opened="{{drawerOpened}}">
+          <iron-selector selected="[[page]]" attr-for-selected="name" class="drawer-list" role="navigation">
+            <img src$="[[rootPath]]images/LogoFullColored.png" alt="Principia Learning Lab">
+            <a href$="[[rootPath]]" name="home">
+              <iron-icon icon="view-module"></iron-icon>
+              Home
+            </a>
+            <a href$="[[rootPath]]profile/[[user.uid]]" name="profile">
+              <iron-icon icon="account-box"></iron-icon>
+              My Profile
+            </a>
+          </iron-selector>
+        </app-drawer>
+        <app-header-layout has-scrolling-region>
+          <app-header slot="header" condenses fixed effect="waterfall">
+            <app-toolbar>
+              <paper-icon-button drawer-toggle icon="menu"></paper-icon-button>
+              <paper-icon-button class="back" icon="arrow-back" on-tap="_goBack"></paper-icon-button>
+              <div main-title>Follow Through System</div>
+              <paper-icon-button title="Sign out" icon="exit-to-app" on-tap="_doFirebaseSignout"></paper-icon-button>
+            </app-toolbar>
+          </app-header>
+          <iron-pages selected="[[page]]" attr-for-selected="name" fallback-selection="404" role="main">
+            <fts-home unresolved name="home" user="[[user]]"></fts-home>
+            <fts-class unresolved name="class" route="[[subroute]]" user="[[user]]"></fts-class>
+            <fts-post unresolved name="post" route="[[subroute]]" user="[[user]]"></fts-post>
+            <fts-activity unresolved name="activity" route="[[subroute]]" user="[[user]]"></fts-activity>
+            <fts-profile unresolved name="profile" route="[[subroute]]" user="[[user]]"></fts-profile>
+            <fts-preview unresolved name="preview" route="[[subroute]]"></fts-preview>
+            <fts-404 name="404"></fts-404>
+          </iron-pages>
+        </app-header-layout>
+      </app-drawer-layout>
+    </template>
+    <paper-toast id="snackbar"></paper-toast>
+  </template>
+
+  <script src="../bower_components/pouchdb/dist/pouchdb.min.js"></script>
+  <script>
+    class FTSApp extends Polymer.Element {
+
+      static get is() { return 'fts-app'; }
+
+      static get properties() {
+        return {
+          rootPath: String,
+          route: Object,
+          routeData: Object,
+          subroute: Object,
+          page: {
+            type: String,
+            reflectToAttribute: true,
+            observer: '_pageChanged'
+          },
+          peopleLocalDb: {
+            type: PouchDB,
+            value: new PouchDB('people')
+          },
+          peopleRemoteDb: {
+            computed: '_computeDb("people")'
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routePageChanged(routeData.page)'
+        ];
+      }
+
+      ready() {
+        super.ready();
+        this.removeAttribute('unresolved');
+        Polymer.RenderStatus.afterNextRender(this, () => {
+          window.addEventListener('sign-in', (e) => this._doFirebaseSignin(e));
+          window.addEventListener('sign-up', (e) => this._onSignUp(e));
+          window.addEventListener('reset-password', (e) => this._onResetPassword(e));
+          window.addEventListener('offline', (e) => this._notifyNetworkStatus(e));
+          window.addEventListener('online', (e) => this._notifyNetworkStatus(e));
+          window.addEventListener('notify-user', (e) => this._onNotifyUser(e));
+        });
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+        /* PUT EVERY DESIGN DOCUMENTS TO LOCAL */
+        let db = new PouchDB('project');
+        db.put({
+          "_id": "_design/opened-projects",
+          "filters": {
+            "user": "function(doc,req){if((doc.type==='project')&&(!doc.closed)){return(-1<doc.faculty_members.indexOf(req.query.id))||(-1<doc.participants.indexOf(req.query.id));}else return false;}"
+          },
+          "views": {
+            "opened-projects": {
+              "map": "function(doc){if(doc.type==='project'){if(!doc.closed){var p=doc.faculty_members.concat(doc.participants);p.forEach(function(element){emit(element);});}}}"
+            }
+          },
+          "language": "javascript"
+        }).catch(function (err) {
+          console.info('_design/opened-projects already exist.');
+        });
+        db = new PouchDB('people');
+        db.bulkDocs([
+          {
+            "_id": "_design/domain",
+            "views": {
+              "domain": {
+                "map": "function(doc){if(doc.type==='user'){var begin=doc._id.indexOf('@');var domain=doc._id.substr(begin+1);var account=doc._id.substring(5,begin);emit(domain,account);}}"
+              }
+            },
+            "language": "javascript"
+          }, {
+            "_id": "_design/filtered",
+            "filters": {
+              "current": "function(doc,req){if(doc.type==='user')return doc._id.indexOf(req.query.email)>-1;else return false;}"
+            },
+            "language": "javascript"
+          }
+        ]);
+        db = new PouchDB('activity');
+        db.bulkDocs([
+          {
+            "_id": "_design/activities",
+            "filters": {
+              "filtered": "function(doc,req){return doc._id.indexOf(req.query.id)>-1;}"
+            },
+            "language": "javascript"
+          }, {
+            "_id": "_design/formused",
+            "views": {
+              "formused": {
+                "map": "function(doc){if((doc.type==='activity')&&(doc.form))emit(doc.project,doc.form);}"
+              }
+            },
+            "language": "javascript"
+          }, {
+            "_id": "_design/tracked",
+            "views": {
+              "tracked": {
+                "map": "function(doc){if((doc.type==='activity')&&(doc.tracked))emit(doc.project,doc.form);}"
+              }
+            },
+            "language": "javascript"
+          }]).catch(function (err) {
+            console.info('_design/activities, _design/formused, _design/tracked already exist.');
+          });
+        db = new PouchDB('post');
+        db.put({
+          "_id": "_design/post",
+          "filters": {
+            "filtered": "function(doc,req){if(doc.type==='post')return doc.parent===req.query.current;else return false;}"
+          },
+          "language": "javascript"
+        }).catch(function (err) {
+          console.info('_design/post already exist.');
+        });
+        db = new PouchDB('comment');
+        db.put({
+          "_id": "_design/comment",
+          "filters": {
+            "filtered": "function(doc,req){if('comment'===doc.type)return-1<doc._id.indexOf(req.query.id);else return false;}",
+            "parent": "function(doc,req){if('comment'===doc.type)return doc.parent===req.query.id;else return false;}"
+          },
+          "language": "javascript"
+        }).catch(function (err) {
+          console.info('_design/comment already exist.');
+        });
+        db = new PouchDB('activity_document');
+        db.put({
+          "_id": "_design/document",
+          "filters": {
+            "filtered": "function(doc,req){if(doc.type==='document'){return doc._id.indexOf(req.query.id)>-1;}else return false;}",
+            "parent": "function(doc,req){if(doc.type==='document')return doc.parent===req.query.parent;else return false;}",
+            "creator": "function(doc,req){if(doc.type==='document'){return req.query.params.includes(doc.creator);}else return false;}"
+          },
+          "language": "javascript"
+        }).catch(function (err) {
+          console.info('_design/document already exist.');
+        });
+      }
+
+      _pageChanged(page, oldPage) {
+        Polymer.importHref(this.resolveUrl('fts-' + page + '.html'), null, this._showInvalidPage.bind(this), true);
+        switch (page) {
+          case 'class':
+            try {
+              let pgClass = this.shadowRoot.querySelector('fts-class');
+              pgClass._initiateSyncTasks();
+            } catch (error) {
+              console.info('<fts-class> is not ready yet.')
+            }
+            break;
+          case 'post':
+            try {
+              let pgPost = this.shadowRoot.querySelector('fts-post');
+              pgPost._initiateSyncTasks();
+            } catch (error) {
+              console.info('<fts-post> is not ready yet.');
+            }
+            break;
+          case 'activity':
+            Polymer.RenderStatus.afterNextRender(this, function () {
+              try {
+                let pgActivity = this.shadowRoot.querySelector('fts-activity');
+                pgActivity._initSyncTasks();
+              } catch (error) {
+                console.info('<fts-activity> is not ready yet.')
+              }
+            });
+            break;
+          default:
+            console.info('Nothing to initialize.');
+            break;
+        }
+        switch (oldPage) {
+          case 'class':
+            let pgClass = this.shadowRoot.querySelector('fts-class');
+            pgClass._cancelAllListener();
+            pgClass._closeForm();
+            pgClass._clearPost();
+            break;
+          case 'post':
+            let pgPost = this.shadowRoot.querySelector('fts-post');
+            pgPost._cancelAllListener();
+            break;
+          case 'activity':
+            let pgActivity = this.shadowRoot.querySelector('fts-activity');
+            pgActivity._cancelSyncTasks();
+            break;
+          default:
+            console.info('Nothing to cancel.');
+            break;
+        }
+      }
+
+      _routePageChanged(page) {
+        this.page = page || 'home';
+        this.drawerOpened = false;
+      }
+
+      _showInvalidPage() {
+        this.set('page', '404');
+      }
+
+      _doFirebaseSignin(e) {
+        let auth = this.$.auth;
+        let login = e.target.shadowRoot.querySelector('fts-login');
+        auth.signInWithEmailAndPassword(e.detail.email, e.detail.pass).then(() => {
+          login._resetInputs();
+          this.$.snackbar.text = 'Signed in';
+          this.$.snackbar.open();
+        }).catch(error => {
+          login._resetInputs();
+          switch (error.code) {
+            case 'auth/invalid-email':
+              this.$.snackbar.text = 'Invalid email-password combination';
+              break;
+            case 'auth/user-disabled':
+              this.$.snackbar.text = 'Your account has been disabled. Please contact Principia team.';
+              break;
+            case 'auth/user-not-found':
+              this.$.snackbar.text = 'No such account. Try to register.';
+              break;
+            case 'auth/wrong-password':
+              this.$.snackbar.text = 'Invalid email-password combination';
+              break;
+            default:
+              this.$.snackbar.text = error.message;
+              break;
+          }
+          this.$.snackbar.open();
+        });
+      }
+
+      _doFirebaseSignout(e) {
+        let auth = this.$.auth;
+        auth.signOut().then(() => {
+          if (this.page !== 'home') {
+            window.history.pushState({}, null, Polymer.rootPath);
+            window.dispatchEvent(new CustomEvent('location-changed'));
+          }
+          this.$.snackbar.text = 'You have been signed out';
+          this.$.snackbar.open();
+        }).catch((error) => {
+          this.$.snackbar.text = 'Unable to sign you out. Please try again.';
+          this.$.snackbar.open();
+        });
+      }
+
+      _computeDb(remote_name) {
+        var path = 'https://fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com/' + remote_name;
+        var opt = {
+          ajax: {
+            headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, opt);
+      }
+
+      _replicateUser(e) {
+        if (e.detail.value) {
+          // check if userdata exist on local_pouch
+          this.peopleLocalDb.get('user_' + e.detail.value.email).catch(() => {
+            // userdata not found. replicate from remotedb
+            this.peopleLocalDb.replicate.from(this.peopleRemoteDb, {
+              checkpoint: false,
+              doc_ids: ['user_' + e.detail.value.email]
+            });
+          });
+        }
+      }
+
+      _notifyNetworkStatus() {
+        let oldOffline = this.offline;
+        this.offline = !window.navigator.onLine;
+        if (this.offline || (!this.offline && oldOffline === true)) {
+          this.$.snackbar.text = this.offline ? 'You are offline' : 'You are online';
+          this.$.snackbar.open();
+        }
+      }
+
+      _goBack() {
+        window.history.back();
+      }
+
+      _onResetPassword(e) {
+        this.$.auth.sendPasswordResetEmail(e.detail.email).then(() => {
+          let snackbar = this.$.snackbar;
+          snackbar.text = 'Email sent to ' + e.detail.email;
+          snackbar.open();
+        }).catch(err => {
+          let snackbar = this.$.snackbar;
+          switch (err.code) {
+            case 'auth/invalid-email':
+              snackbar.text = 'Invalid email address.'
+              break;
+            case 'auth/user-not-found':
+              snackbar.text = 'Email not found. Are you trying to register?';
+              break;
+            default:
+              console.log(err);
+              snackbar.text = err.message;
+              break;
+          }
+          snackbar.open();
+        });
+      }
+
+      _onSignUp(e) {
+        this.$.auth.createUserWithEmailAndPassword(e.detail.email, e.detail.password).catch(error => {
+          let code = error.code;
+          switch (code) {
+            case 'auth/email-already-in-use':
+              this.$.snackbar.text = 'Your email already registered. Try to sign in.';
+              break;
+            case 'auth/invalid-email':
+              this.$.snackbar.text = 'Invalid email address.';
+              break;
+            case 'auth/weak-password':
+              this.$.snackbar.text = 'Your password is too weak. Change it and try again.';
+              break;
+            default:
+              this.$.snackbar.text = error.message;
+              break;
+          }
+          this.$.snackbar.open();
+        });
+      }
+
+      _onNewCommentReceived(e) {
+        let snackbar = this.$.snackbar;
+        snackbar.text = e.detail.written_docs > 1 ? 'New comments received.' : 'New comment received.';
+        snackbar.open();
+      }
+
+      _onNotifyUser(e) {
+        let snackbar = this.$.snackbar;
+        snackbar.text = e.detail.message;
+        snackbar.open();
+      }
+
+    }
+
+    window.customElements.define(FTSApp.is, FTSApp);
+  </script>
+</dom-module>

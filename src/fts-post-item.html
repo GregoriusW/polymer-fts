@@ -1,0 +1,230 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../bower_components/video-view/video-view.html">
+<link rel="import" href="fts-comment-form.html">
+<link rel="import" href="fts-comment-item.html">
+<link rel="import" href="fts-styles.html">
+
+<dom-module id="fts-post-item">
+  <template>
+    <style include="fts-styles">
+      @media (min-width: 801px) {
+         video-view {
+          --video-width: 640px;
+          --video-height: 360px;
+        }
+      }
+
+      @media (max-width: 800px) {
+        video-view {
+          --video-width: 100%;
+        }
+      }
+
+      .card {
+        margin-bottom: 24px;
+      }
+
+      .header {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+      }
+
+      .header>iron-image {
+        background-color: var(--primary-color);
+        width: 48px;
+        height: 48px;
+      }
+
+      .header>.detail {
+        @apply --paper-font-body2;
+        @apply --layout-vertical;
+        @apply --layout-flex;
+        padding-left: 12px;
+      }
+
+      .detail span {
+        @apply --paper-font-caption;
+        color: var(--secondary-text-color);
+      }
+
+      .content {
+        @apply --paper-font-body1;
+        padding: 8px 16px;
+      }
+
+      .content iron-image,
+      .content video-view {
+        margin-bottom: 8px;
+      }
+
+      .footer {
+        border-top: 1px solid var(--divider-color);
+        background-color: var(--paper-grey-100);
+        color: var(--paper-grey-700);
+      }
+
+      .more {
+        background-color: var(--primary-background-color);
+        padding: 8px 8px 4px;
+        border-top: 1px solid var(--divider-color);
+        text-align: center;
+      }
+
+      .more a {
+        @apply --paper-font-body2;
+        text-decoration: none;
+        color: var(--primary-color);
+      }
+    </style>
+
+    <div class="card">
+      <div class="header">
+        <iron-image preload fade src="[[creator.photoURL]]" sizing="cover" position="center"></iron-image>
+        <div class="detail">
+          [[_computeFullName(creator.firstName, creator.lastName)]]
+          <span>[[_computeTimestamp(post.timestamp)]]</span>
+        </div>
+      </div>
+      <div class="content">
+        <template is="dom-if" if="[[shouldRenderImage]]">
+          <iron-image preload fade src="[[post.attachmentURL]]"></iron-image>
+        </template>
+        <template is="dom-if" if="[[shouldRenderVideo]]">
+          <video-view url="[[post.attachmentURL]]"></video-view>
+        </template>
+        [[post.content]]
+      </div>
+      <div class="footer">
+        <fts-comment-form></fts-comment-form>
+        <template is="dom-repeat" items="[[displayedComments]]" as="comment">
+          <fts-comment-item identifier="[[comment.id]]"></fts-comment-item>
+        </template>
+        <template is="dom-if" if="[[shouldRenderMore]]">
+          <div class="more">
+            <a href$="[[rootPath]]post/[[identifier]]">Show more...</a>
+          </div>
+        </template>
+      </div>
+    </div>
+  </template>
+  <script>
+    class FTSPostItem extends Polymer.Element {
+
+      static get is() { return 'fts-post-item'; }
+
+      static get properties() {
+        return {
+          identifier: {
+            type: String,
+            observer: '_identifierChanged'
+          },
+          post: {
+            type: Object,
+            readOnly: true
+          },
+          creator: {
+            type: Object,
+            readOnly: true
+          },
+          comments: {
+            type: Array,
+            readOnly: true
+          },
+          displayedComments: {
+            computed: '_computeDisplayedComments(comments)'
+          },
+          shouldRenderMore: {
+            computed: '_computeShouldRenderMore(comments.length)'
+          },
+          shouldRenderImage: {
+            computed: '_computeShouldRenderImage(post.attachmentType)'
+          },
+          shouldRenderVideo: {
+            computed: '_computeShouldRenderVideo(post.attachmentType)'
+          }
+        };
+      }
+
+      ready() {
+        super.ready();
+        this.addEventListener('submit-comment', (e) => this._onSubmitComment(e));
+      }
+
+      disconnectedCallback() {
+        super.disconnectedCallback();
+        Polymer.RenderStatus.afterNextRender(this, function () {
+          this._setComments([]);
+        });
+      }
+
+      _onSubmitComment(e) {
+        this.dispatchEvent(new CustomEvent('new-comment', {
+          bubbles: true,
+          composed: true,
+          detail: {
+            type: 'comment',
+            content: e.detail.content,
+            parent: this.identifier
+          }
+        }));
+        this.shadowRoot.querySelector('fts-comment-form')._reset();
+      }
+
+      _identifierChanged(identifier) {
+        let db = new PouchDB('post');
+        let db2 = new PouchDB('people');
+        if (identifier) {
+          db.get(identifier).then(doc => {
+            this._setPost(doc);
+            db2.get(doc.creator).then(person => {
+              this._setCreator(person);
+            });
+          });
+          Polymer.RenderStatus.afterNextRender(this, function () {
+            this._refreshComments(identifier);
+          });
+        }
+      }
+
+      _refreshComments(id) {
+        let key = 'comment_' + id;
+        let db = new PouchDB('comment');
+        db.allDocs({
+          descending: true,
+          startkey: key + '\ufff0',
+          endkey: key,
+          limit: 5
+        }).then(result => this._setComments(result.rows));
+      }
+
+      _computeDisplayedComments(comments) {
+        return comments.slice(0, 3);
+      }
+
+      _computeFullName(first, last) {
+        return last ? first + ' ' + last : first;
+      }
+
+      _computeTimestamp(ms) {
+        let options = { day: 'numeric', month: 'short' };
+        return new Date(ms).toLocaleDateString({}, options);
+      }
+
+      _computeShouldRenderImage(type) {
+        return type === 'image';
+      }
+
+      _computeShouldRenderVideo(type) {
+        return type === 'youtube'
+      }
+
+      _computeShouldRenderMore(length) {
+        return 3 < length;
+      }
+
+    }
+
+    window.customElements.define(FTSPostItem.is, FTSPostItem);
+  </script>
+</dom-module>

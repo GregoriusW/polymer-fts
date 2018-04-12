@@ -1,0 +1,59 @@
+<link rel="import" href="../../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+
+<dom-module id="person-item">
+  <template strip-whitespace>
+    <style>
+      :host {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+      }
+
+      :host[rounded] {
+        border-radius: 50%;
+      }
+
+      iron-image {
+        height: var(--icon-dimension, 32px);
+        width: var(--icon-dimension, 32px);
+      }
+    </style>
+
+    <iron-image preload fade alt="[[key]]" sizing="cover" src="[[data.photoURL]]"></iron-image>
+    [[_computeFullName(data.firstName, data.lastName)]]
+  </template>
+  <script>
+    class PersonItem extends Polymer.Element {
+
+      static get is() { return 'person-item'; }
+
+      static get properties() {
+        return {
+          db: {
+            type: PouchDB,
+            value: new PouchDB('people')
+          },
+          key: {
+            type: String,
+            observer: '_keyChanged'
+          },
+          data: {
+            type: Object,
+            readOnly: true
+          }
+        };
+      }
+
+      _keyChanged(key) {
+        if (Boolean(key)) this.db.get(key).then((doc) => this._setData(doc));
+      }
+
+      _computeFullName(first, last) {
+        return Boolean(last) ? first + ' ' + last : first;
+      }
+
+    }
+
+    window.customElements.define(PersonItem.is, PersonItem);
+  </script>
+</dom-module>

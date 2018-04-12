@@ -1,0 +1,54 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="fts-icons.html">
+
+<dom-module id="fts-404">
+  <template>
+    <style>
+       :host {
+        display: block;
+        padding-top: 1rem;
+        text-align: center;
+        color: var(--paper-grey-800);
+      }
+
+      iron-icon {
+        display: inline-block;
+        width: 60px;
+        height: 60px;
+      }
+
+      h1 {
+        margin: 50px 0;
+        font-weight: 300;
+      }
+
+      a {
+        text-decoration: none;
+        color: var(--primary-color);
+      }
+
+      paper-button {
+        border: 2px solid var(--primary-color);
+      }
+    </style>
+
+    <div>
+      <iron-icon icon="error"></iron-icon>
+      <h1>Sorry, we couldn't find that page</h1>
+    </div>
+    <a href="[[rootPath]]" tabindex="-1">
+      <paper-button>Go to the home page</paper-button>
+    </a>
+  </template>
+  <script>
+    class FTS404 extends Polymer.Element {
+
+      static get is() { return 'fts-404'; }
+
+    }
+
+    window.customElements.define(FTS404.is, FTS404);
+  </script>
+</dom-module>

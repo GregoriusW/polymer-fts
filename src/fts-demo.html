@@ -1,0 +1,88 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-icon-item.html">
+<link rel="import" href="fts-person-item.html">
+
+<dom-module id="fts-demo">
+  <template>
+    <style>
+       :host {
+        display: block;
+      }
+    </style>
+    <paper-input label="project-id" value="{{projectId}}"></paper-input>
+    <paper-input label="user-id" value="{{userId}}"></paper-input>
+    <paper-button on-tap="_check">Check ACL</paper-button>
+    <paper-listbox>
+      <template is="dom-repeat" items="[[members]]">
+        <fts-person-item key="[[item]]"></fts-person-item>
+      </template>
+    </paper-listbox>
+  </template>
+  <script>
+    class FTSDemo extends Polymer.Element {
+
+      static get is() { return 'fts-demo'; }
+
+      static get properties() {
+        return {
+          localDb: {
+            type: PouchDB,
+            value: new PouchDB('acl')
+          },
+          remoteDb: {
+            computed: '_computeRemoteDb("acl")'
+          },
+          userId: String,
+          projectId: String,
+          members: Object
+        };
+      }
+
+      ready() {
+        super.ready();
+        this.removeAttribute('unresolved');
+        this.localDb.put({
+          _id: "_design/grouping",
+          filters: {
+            project: "function(doc,req){if(doc.type==='acl'){return doc.project===req.query.project;}else return false;}"
+          },
+          language: "javascript"
+        });
+        Polymer.RenderStatus.afterNextRender(this, function () {
+          this.addEventListener('replication-complete', (e) => this._onReplicationComplete(e));
+        });
+      }
+
+      _computeRemoteDb(dbname) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', dbname].join('/');
+        let opt = { ajax: { headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" } } };
+        return new PouchDB(path, opt);
+      }
+
+      _check() {
+        if (window.navigator.onLine) {
+          let projectId = this.get('projectId');
+          PouchDB.replicate(this.remoteDb, this.localDb, {
+            checkpoint: false,
+            filter: 'grouping/project',
+            query_params: { project: projectId }
+          }).then(() => this.dispatchEvent(new CustomEvent('replication-complete')));
+        } else {
+          let key = ['acl', this.get('projectId'), this.get('userId')].join('_');
+          this.localDb.get(key).then(doc => this.set('members', doc.members));
+        }
+      }
+
+      _onReplicationComplete(e) {
+        let key = ['acl', this.get('projectId'), this.get('userId')].join('_');
+        this.localDb.get(key).then(doc => this.set('members', doc.members));
+      }
+
+    }
+
+    window.customElements.define(FTSDemo.is, FTSDemo);
+  </script>
+</dom-module>

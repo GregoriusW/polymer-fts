@@ -1,0 +1,267 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/neon-animation/web-animations.html">
+<link rel="import" href="../bower_components/neon-animation/animations/scale-up-animation.html">
+<link rel="import" href="../bower_components/neon-animation/animations/scale-down-animation.html">
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="fts-icons.html">
+
+<dom-module id="fts-post-form">
+  <template>
+    <style>
+      .overlay {
+        background-color: rgba(0, 0, 0, .5);
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 100;
+      }
+
+      paper-fab {
+        --paper-fab-background: var(--accent-color);
+        z-index: 1;
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+      }
+
+      #form {
+        width: 100%;
+        max-width: 760px;
+      }
+
+      @media (max-width: 800px) {
+        #form {
+          width: calc(100% - 48px);
+        }
+      }
+
+      #form p {
+        margin: 0;
+      }
+
+      #form>.header {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        @apply --paper-font-title;
+        color: white;
+        background-color: var(--primary-color);
+        margin-top: 0;
+        line-height: 3;
+      }
+
+      #form>.header>span {
+        @apply --layout-flex;
+      }
+
+      .buttons.controls {
+        @apply --layout-start-justified;
+      }
+
+      paper-textarea {
+        --paper-input-container-input: {
+          @apply --paper-font-body1;
+        }
+        ;
+      }
+
+      paper-icon-button.red {
+        --paper-icon-button: {
+          color: var(--paper-red-500);
+        }
+      }
+
+      paper-icon-button.blue {
+        --paper-icon-button: {
+          color: var(--paper-blue-500);
+        }
+      }
+
+      paper-button.primary {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      paper-button[disabled] {
+        background-color: #eaeaea;
+        color: #fff;
+      }
+    </style>
+
+
+    <paper-fab icon="add" on-tap="_openForm"></paper-fab>
+    <paper-dialog id="form" on-opened-changed="_onFormOpenedChanged" opened="{{opened}}" entry-animation="scale-up-animation"
+      exit-animation="scale-down-animation" no-cancel-on-outside-click no-cancel-on-esc-key>
+      <div class="header">
+        <span>New Post</span>
+        <paper-icon-button icon="clear" dialog-dismiss></paper-icon-button>
+      </div>
+      <paper-textarea id="content" label="Share something" value="{{data.content}}"></paper-textarea>
+      <template is="dom-if" if="[[haveAttachment]]">
+        <p><strong>Attachment:</strong>&nbsp;<em>[[data.attachmentURL]]</em></p>
+      </template>
+      <div class="buttons controls">
+        <paper-icon-button class="red" icon="photo" on-tap="_openUploadForm"></paper-icon-button>
+        <paper-icon-button class="blue" icon="movie" on-tap="_openYTForm"></paper-icon-button>
+      </div>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button class="primary" raised on-tap="_handleSubmit" disabled="[[!canBeSubmitted]]">Send</paper-button>
+      </div>
+    </paper-dialog>
+    <paper-dialog id="ytlink" no-cancel-on-outside-click no-cancel-on-esc-key>
+      <paper-input label="Youtube URL"></paper-input>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button class="primary" on-tap="_setYoutubeLink" raised dialog-dismiss>Attach</paper-button>
+      </div>
+    </paper-dialog>
+    <paper-dialog id="uplink" no-cancel-on-outside-click no-cancel-on-esc-key>
+      <input type="file" id="file" accept="image/*" on-change="_onFilesChanged">
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button class="primary" on-tap="_upload" disabled="[[uploading]]">Attach</paper-button>
+      </div>
+    </paper-dialog>
+    <template is="dom-if" if="[[opened]]">
+      <div class="overlay"></div>
+    </template>
+  </template>
+  <script>
+    class FTSPostForm extends Polymer.Element {
+
+      static get is() { return 'fts-post-form'; }
+
+      static get properties() {
+        return {
+          user: Object,
+          data: {
+            type: Object,
+            value: {}
+          },
+          haveAttachment: {
+            computed: '_computeHaveAttachment(data.attachmentURL)'
+          },
+          files: FileList,
+          opened: {
+            type: Boolean,
+            value: false,
+            reflectToAttribute: true
+          },
+          uploading: {
+            type: Boolean,
+            value: false
+          },
+          canBeSubmitted: {
+            computed: '_computeCanBeSubmitted(data.content, data.attachmentURL)'
+          }
+        };
+      }
+
+      _openForm() {
+        this.$.form.open();
+      }
+
+      _closeForm() {
+        this.$.form.close();
+      }
+
+      _openYTForm() {
+        this.set('data.attachmentType', 'youtube');
+        this.set('data.attachmentURL', null);
+        this.$.ytlink.open();
+      }
+
+      _openUploadForm() {
+        this.set('data.attachmentType', 'image');
+        this.set('data.attachmentURL', null);
+        this.$.uplink.open();
+      }
+
+      _upload() {
+        let files = this.$.file.files;
+        if (files.length > 0) {
+          let storage = firebase.storage();
+          let storageRef = storage.ref();
+          let blob = files.item(0);
+          let path = ['post', this.get('user.email'), Date.now(), blob.name].join('/');
+          let attachmentRef = storageRef.child(path);
+          this.set('uploading', true);
+          attachmentRef.put(blob).then(snapshot => {
+            this.set('uploading', false);
+            this.set('data.attachmentURL', snapshot.downloadURL);
+            this.$.uplink.close();
+          });
+        }
+      }
+
+      _computeShouldRenderImagePreview(type, url) {
+        return (type === 'image') && url;
+      }
+
+      _computeShouldRenderVideoPreview(type, url) {
+        return (type === 'youtube') && url;
+      }
+
+      _computeHaveAttachment(url) {
+        return (url !== undefined) && (url !== null) && (url !== '');
+      }
+
+      _computeCanBeSubmitted(content, url) {
+        let contentEmpty = (content === undefined) || (content === null) || (content === '');
+        let urlEmpty = (url === undefined) || (url === null) || (url === '');
+        return !contentEmpty || !urlEmpty;
+      }
+
+      _handleSubmit() {
+        let event = new CustomEvent('submit-post', {
+          bubble: true,
+          composed: true,
+          detail: this.data
+        });
+        this.dispatchEvent(event);
+      }
+
+      _onFormOpenedChanged(event) {
+        if (event.detail.value) {
+          this.set('data', {
+            type: 'post'
+          });
+        }
+      }
+
+      _setYoutubeLink() {
+        let input = this.$.ytlink.querySelector('paper-input');
+        this.set('data.attachmentURL', input.value);
+        input.value = undefined;
+      }
+
+      _onFilesChanged(e) {
+        let input = e.currentTarget;
+        let size = input.files[0].size / 1024;
+        if (input.files.length > 0) {
+          if (size > 100) {
+            this.dispatchEvent(new CustomEvent('notify-user', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                message: 'Maximum allowed size is 100 KB. Please select smaller file.'
+              }
+            }));
+            input.value = '';
+          } else
+            this.set('files', input.files);
+        }
+      }
+
+    }
+
+    window.customElements.define(FTSPostForm.is, FTSPostForm);
+  </script>
+</dom-module>

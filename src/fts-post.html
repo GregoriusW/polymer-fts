@@ -1,0 +1,256 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../bower_components/video-view/video-view.html">
+<link rel="import" href="fts-styles.html">
+<link rel="import" href="fts-comment-form.html">
+<link rel="import" href="fts-comment-item.html">
+
+<dom-module id="fts-post">
+  <template>
+    <style include="fts-styles">
+       :host {
+        display: block;
+      }
+
+      @media (max-width: 800px) {
+         :host {
+          padding: 24px 0;
+        }
+      }
+
+      @media (min-width: 801px) {
+         :host {
+          padding: 24px;
+        }
+      }
+
+      .header {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+      }
+
+      .header>iron-image {
+        background-color: var(--primary-color);
+        width: 48px;
+        height: 48px;
+      }
+
+      .header>.detail {
+        @apply --paper-font-body2;
+        @apply --layout-vertical;
+        @apply --layout-flex;
+        padding-left: 12px;
+      }
+
+      .detail span {
+        @apply --paper-font-caption;
+        color: var(--secondary-text-color);
+      }
+
+      .content {
+        @apply --paper-font-body1;
+        padding: 8px 16px;
+      }
+
+      .footer {
+        border-top: 1px solid var(--divider-color);
+        background-color: var(--paper-grey-100);
+        color: var(--paper-grey-700);
+      }
+    </style>
+
+    <app-route route="[[route]]" pattern="/:id" data="{{routeData}}"></app-route>
+    <div class="card">
+      <div class="header">
+        <iron-image preload fade src="[[creatorData.photoURL]]" sizing="contain" position="center"></iron-image>
+        <div class="detail">
+          [[_computeFullName(creatorData.firstName, creatorData.lastName)]]
+          <span>[[_computeTimestamp(postData.timestamp)]]</span>
+        </div>
+      </div>
+      <div class="content">
+        <template is="dom-if" if="[[_shouldRenderImage]]" restamp>
+          <iron-image preload fade src="[[postData.attachmentURL]]"></iron-image>
+        </template>
+        <template is="dom-if" if="[[_shouldRenderVideo]]" restamp>
+          <video-view url="[[postData.attachmentURL]]"></video-view>
+        </template>
+        [[postData.content]]
+      </div>
+      <div class="footer">
+        <fts-comment-form id="form"></fts-comment-form>
+        <template is="dom-repeat" items="[[comments]]">
+          <fts-comment-item identifier="[[item.id]]"></fts-comment-item>
+        </template>
+      </div>
+    </div>
+  </template>
+
+  <script>
+    class FTSPost extends Polymer.Element {
+
+      static get is() { return 'fts-post'; }
+
+      static get properties() {
+        return {
+          localPostDb: {
+            type: PouchDB,
+            value: new PouchDB('post')
+          },
+          localCommentDb: {
+            type: PouchDB,
+            value: new PouchDB('comment')
+          },
+          remoteCommentDb: {
+            computed: '_computeCloudantDB("comment")'
+          },
+          route: Object,
+          routeData: Object,
+          postData: {
+            type: Object,
+            readOnly: true
+          },
+          creatorData: {
+            type: Object,
+            readOnly: true
+          },
+          comments: {
+            type: Array,
+            value: []
+          },
+          commentSync: Object,
+          _shouldRenderImage: {
+            computed: '_computeShouldRenderImage(postData.attachmentType)'
+          },
+          _shouldRenderVideo: {
+            computed: '_computeShouldRenderVideo(postData.attachmentType)'
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routeIdChanged(routeData.id)'
+        ];
+      }
+
+      ready() {
+        super.ready();
+        this.removeAttribute('unresolved');
+        Polymer.RenderStatus.afterNextRender(this, function () {
+          this.addEventListener('submit-comment', (e) => this._onSubmitComment(e));
+        });
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+        Polymer.RenderStatus.afterNextRender(this, function () {
+          this._initiateSyncTasks();
+        });
+      }
+
+      _routeIdChanged(id) {
+        if (id.startsWith('post_')) {
+          this.localPostDb.get(id).then(doc => {
+            let db = new PouchDB('people');
+            db.get(doc.creator).then(data => this._setCreatorData(data));
+            this._setPostData(doc);
+          })
+        }
+      }
+
+      _fetchComments(start) {
+        let loKey = ['comment', this.get('routeData.id')].join('_');
+        let hiKey = loKey + '\ufff0';
+        let startKey = start === '' ? hiKey : start;
+        this.localCommentDb.allDocs({
+          descending: true,
+          startkey: startKey,
+          endkey: loKey
+        }).then(result => this.set('comments', result.rows));
+      }
+
+      _computeCloudantDB(dbname) {
+        let path = 'https://fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com/' + dbname;
+        let opts = { ajax: { headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" } } };
+        return new PouchDB(path, opts);
+      }
+
+      _computeFullName(first, last) {
+        return last ? first + ' ' + last : first;
+      }
+
+      _computeTimestamp(ms) {
+        let opts = { day: "numeric", month: "short" };
+        return new Date(ms).toLocaleDateString({}, opts);
+      }
+
+      _computeShouldRenderImage(type) {
+        return type === 'image';
+      }
+
+      _computeShouldRenderVideo(type) {
+        return type === 'youtube';
+      }
+
+      _onSubmitComment(e) {
+        let type = 'comment';
+        let parent = this.routeData.id;
+        let creator = 'user_' + this.user.email;
+        let now = Date.now();
+        let _id = [type, parent, now, creator].join('_');
+        let data = {
+          "_id": _id,
+          "type": type,
+          "parent": parent,
+          "content": e.detail.content,
+          "timestamp": now,
+          "creator": creator
+        };
+        this.localCommentDb.put(data).then(info => {
+          this.$.form._reset();
+        });
+      }
+
+      _initiateSyncTasks() {
+        let local = new PouchDB('comment');
+        let remote = this._computeCloudantDB('comment');
+        console.info('[' + this.routeData.id + '] Initializing comment sync task.');
+        PouchDB.replicate(this.localCommentDb, this.remoteCommentDb, {
+          checkpoint: false,
+          filter: 'comment/parent',
+          query_params: { id: this.routeData.id }
+        }).on('complete', info => {
+          let sync = PouchDB.sync(this.localCommentDb, this.remoteCommentDb, {
+            checkpoint: false,
+            live: true,
+            retry: true,
+            heartbeat: 30000,
+            filter: 'comment/parent',
+            query_params: { id: this.routeData.id }
+          }).on('change', info => {
+            this._fetchComments('');
+            if (info.change.docs_written > 0) {
+              this.dispatchEvent(new CustomEvent('notify-user', {
+                bubbles: true,
+                composed: true,
+                detail: { message: 'New comment received.' }
+              }));
+            }
+          });
+          this.set('commentSync', sync);
+          this._fetchComments('');
+        });
+      }
+
+      _cancelAllListener() {
+        console.info('[' + this.routeData.id + '] Canceling all task.');
+        this.commentSync.cancel();
+      }
+
+    }
+
+    window.customElements.define(FTSPost.is, FTSPost);
+  </script>
+</dom-module>

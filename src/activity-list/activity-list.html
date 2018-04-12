@@ -1,0 +1,300 @@
+<link rel="import" href="../../bower_components/iron-collapse/iron-collapse.html">
+<link rel="import" href="../../bower_components/paper-item/paper-icon-item.html">
+<link rel="import" href="../../bower_components/paper-item/paper-item-body.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../fts-icons/fts-icons.html">
+
+<dom-module id="activity-list">
+  <template strip-whitespace>
+    <style>
+      :host {
+        --paper-item-body-two-line-min-height: 48px;
+      }
+
+      h2 {
+        @apply --paper-font-title;
+
+        margin: 0px;
+        padding: 8px 16px;
+      }
+
+      paper-item-body,
+      .paper-item-link paper-icon-item span {
+        @apply --paper-font-menu;
+      }
+
+      div[secondary] {
+        @apply --paper-font-caption;
+      }
+
+      .paper-item-link {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .paper-item-link paper-icon-item {
+        transition-duration: 0.28s;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-property: background-color;
+      }
+
+      .paper-item-link paper-icon-item:hover {
+        background-color: #eeeeee;
+      }
+
+      .paper-item-link paper-icon-item span {
+        @apply --layout-flex;
+      }
+    </style>
+
+    <div style="padding:16px 0px;">
+      <section>
+        <h2>Stages</h2>
+        <div role="listbox">
+          <paper-icon-item disabled="[[loading]]" on-tap="_toggleOpened">
+            <iron-icon slot="item-icon" icon="looks-1"></iron-icon>
+            <paper-item-body two-line>
+              <div>[[_computeStageName(project.stage_1)]]</div>
+              <div secondary>[[_computeStageDescription(project.stage_1)]]</div>
+            </paper-item-body>
+          </paper-icon-item>
+          <iron-collapse no-animation opened="{{oneOpened}}">
+            <div class="collapse-content" role="listbox">
+              <template is="dom-repeat" items="[[activityList]]" as="activity">
+                <a href$="[[rootPath]]activity/[[activity.id]]" class="paper-item-link" tabindex="-1" title$="[[activity.doc.name]]">
+                  <paper-icon-item>
+                    <iron-icon slot="item-icon" icon="chevron-right"></iron-icon>
+                    <span>[[activity.doc.name]]</span>
+                  </paper-icon-item>
+                </a>
+              </template>
+            </div>
+          </iron-collapse>
+          <paper-icon-item disabled="[[loading]]" on-tap="_toggleOpened">
+            <iron-icon slot="item-icon" icon="looks-2"></iron-icon>
+            <paper-item-body two-line>
+              <div>[[_computeStageName(project.stage_2)]]</div>
+              <div secondary>[[_computeStageDescription(project.stage_2)]]</div>
+            </paper-item-body>
+          </paper-icon-item>
+          <iron-collapse no-animation opened="{{twoOpened}}">
+            <div class="collapse-content" role="listbox">
+              <template is="dom-repeat" items="[[activityList]]" as="activity">
+                <a href$="[[rootPath]]activity/[[activity.id]]" class="paper-item-link" tabindex="-1" title$="[[activity.doc.name]]">
+                  <paper-icon-item>
+                    <iron-icon slot="item-icon" icon="chevron-right"></iron-icon>
+                    <span>[[activity.doc.name]]</span>
+                  </paper-icon-item>
+                </a>
+              </template>
+            </div>
+          </iron-collapse>
+          <paper-icon-item disabled="[[loading]]" on-tap="_toggleOpened">
+            <iron-icon slot="item-icon" icon="looks-3"></iron-icon>
+            <paper-item-body two-line>
+              <div>[[_computeStageName(project.stage_3)]]</div>
+              <div secondary>[[_computeStageDescription(project.stage_3)]]</div>
+            </paper-item-body>
+          </paper-icon-item>
+          <iron-collapse no-animation opened="{{threeOpened}}">
+            <div class="collapse-content" role="listbox">
+              <template is="dom-repeat" items="[[activityList]]" as="activity">
+                <a href$="[[rootPath]]activity/[[activity.id]]" class="paper-item-link" tabindex="-1" title$="[[activity.doc.name]]">
+                  <paper-icon-item>
+                    <iron-icon slot="item-icon" icon="chevron-right"></iron-icon>
+                    <span>[[activity.doc.name]]</span>
+                  </paper-icon-item>
+                </a>
+              </template>
+            </div>
+          </iron-collapse>
+          <paper-icon-item disabled="[[loading]]" on-tap="_toggleOpened">
+            <iron-icon slot="item-icon" icon="looks-4"></iron-icon>
+            <paper-item-body two-line>
+              <div>[[_computeStageName(project.stage_4)]]</div>
+              <div secondary>[[_computeStageDescription(project.stage_4)]]</div>
+            </paper-item-body>
+          </paper-icon-item>
+          <iron-collapse no-animation opened="{{fourOpened}}">
+            <div class="collapse-content" role="listbox">
+              <template is="dom-repeat" items="[[activityList]]" as="activity">
+                <a href$="[[rootPath]]activity/[[activity.id]]" class="paper-item-link" tabindex="-1" title$="[[activity.doc.name]]">
+                  <paper-icon-item>
+                    <iron-icon slot="item-icon" icon="chevron-right"></iron-icon>
+                    <span>[[activity.doc.name]]</span>
+                  </paper-icon-item>
+                </a>
+              </template>
+            </div>
+          </iron-collapse>
+        </div>
+      </section>
+    </div>
+  </template>
+  <script>
+    class ActivityList extends Polymer.Element {
+
+      static get is() { return 'activity-list'; }
+
+      static get properties() {
+        return {
+          project: {
+            type: Object,
+            observer: '_projectChanged'
+          },
+          activityList: {
+            type: Array,
+            value: () => []
+          },
+          key: {
+            type: String,
+            observer: '_keyChanged'
+          },
+          local: {
+            type: PouchDB,
+            value: new PouchDB('activity')
+          },
+          loading: {
+            type: Boolean,
+            value: false
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_oneOpenedChanged(oneOpened)',
+          '_twoOpenedChanged(twoOpened)',
+          '_threeOpenedChanged(threeOpened)',
+          '_fourOpenedChanged(fourOpened)'
+        ];
+      }
+
+      _keyChanged(key) {
+        if (Boolean(key)) {
+          let db = new PouchDB('project');
+          db.get(key).then((doc) => this.set('project', doc), (error) => console.error(error.message));
+        }
+      }
+
+      _projectChanged(project) {
+        if (Boolean(project)) {
+          this.set('loading', true);
+          let remote = this._initCloudantDb('activity');
+          PouchDB.replicate(remote, this.local, {
+            checkpoint: false,
+            filter: 'activities/filtered',
+            query_params: { id: key }
+          }).then((info) => this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: { message: 'Class activity updated' }
+          })), (error) => console.error(error.message)).finally(() => this.set('loading', false));
+        }
+      }
+
+      _oneOpenedChanged(opened) {
+        if (opened) {
+          this.setProperties({
+            activityList: [],
+            twoOpened: false,
+            threeOpened: false,
+            fourOpened: false
+          });
+          let start = ['activity', this.get('key'), 1].join('_');
+          this.local.allDocs({
+            include_docs: true,
+            startkey: start,
+            endkey: start + '\ufff0'
+          }).then((result) => this.set('activityList', result.rows), (error) => console.error(error.message));
+        }
+      }
+
+      _twoOpenedChanged(opened) {
+        if (opened) {
+          this.setProperties({
+            activityList: [],
+            oneOpened: false,
+            threeOpened: false,
+            fourOpened: false
+          });
+          let start = ['activity', this.get('key'), 2].join('_');
+          this.local.allDocs({
+            include_docs: true,
+            startkey: start,
+            endkey: start + '\ufff0'
+          }).then((result) => this.set('activityList', result.rows), (error) => console.error(error.message));
+        }
+      }
+
+      _threeOpenedChanged(opened) {
+        if (opened) {
+          this.setProperties({
+            activityList: [],
+            oneOpened: false,
+            twoOpened: false,
+            fourOpened: false
+          });
+          let start = ['activity', this.get('key'), 3].join('_');
+          this.local.allDocs({
+            include_docs: true,
+            startkey: start,
+            endkey: start + '\ufff0'
+          }).then((result) => this.set('activityList', result.rows), (error) => console.error(error.message));
+        }
+      }
+
+      _fourOpenedChanged(opened) {
+        if (opened) {
+          this.setProperties({
+            activityList: [],
+            oneOpened: false,
+            twoOpened: false,
+            threeOpened: false
+          });
+          let start = ['activity', this.get('key'), 4].join('_');
+          this.local.allDocs({
+            include_docs: true,
+            startkey: start,
+            endkey: start + '\ufff0'
+          }).then((result) => this.set('activityList', result.rows), (error) => console.error(error.message));
+        }
+      }
+
+      _initCloudantDb(name) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', name].join('/');
+        let options = {
+          ajax: {
+            headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      _initActivityDesign() {
+        this.local.put({
+          "_id": "_design/activities",
+          "filters": {
+            "filtered": "function(doc,req){return doc._id.indexOf(req.query.id)>-1;}"
+          },
+          "language": "javascript"
+        }).then((info) => console.log(info), (error) => console.error(error));
+      }
+
+      _computeStageName(value) {
+        return (value.split('|'))[0];
+      }
+
+      _computeStageDescription(value) {
+        return value.split('|').pop();
+      }
+
+      _toggleOpened(e) {
+        e.currentTarget.nextElementSibling.toggle();
+      }
+
+    }
+
+    window.customElements.define(ActivityList.is, ActivityList);
+  </script>
+</dom-module>

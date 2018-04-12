@@ -1,0 +1,178 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-styles/typography.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="fts-styles.html">
+<link rel="import" href="fts-icons.html">
+<link rel="import" href="fts-person-item.html">
+<link rel="import" href="fts-dashboard-item.html">
+
+<dom-module id="fts-dashboard">
+  <template>
+    <style include="fts-styles"></style>
+    <style>
+      table {
+        position: relative;
+        border: 1px solid rgba(0, 0, 0, .12);
+        border-collapse: collapse;
+        min-width: 100%;
+        font-size: 13px;
+      }
+
+      table thead {
+        padding-bottom: 3px;
+      }
+
+      table tbody tr {
+        position: relative;
+        height: 48px;
+        transition-duration: 0.28s;
+        transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+        transition-property: background-color;
+      }
+
+      table tbody tr:hover {
+        background-color: #eeeeee;
+      }
+
+      table td,
+      table th {
+        padding: 0 18px 12px 18px;
+      }
+
+      table td:first-of-type,
+      table th:first-of-type {
+        text-align: left;
+      }
+
+      table td {
+        position: relative;
+        vertical-align: middle;
+        height: 48px;
+        border-top: 1px solid rgba(0, 0, 0, 0.12);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+        padding-top: 12px;
+        box-sizing: border-box;
+      }
+
+      table th {
+        position: relative;
+        vertical-align: bottom;
+        text-overflow: ellipsis;
+        font-weight: bold;
+        line-height: 24px;
+        letter-spacing: 0;
+        height: 48px;
+        font-size: 12px;
+        color: rgba(0, 0, 0, 0.54);
+        padding-bottom: 8px;
+        box-sizing: border-box;
+      }
+
+      th a {
+        color: inherit;
+        text-decoration: none;
+      }
+    </style>
+
+    <table class="card">
+      <thead>
+        <tr>
+          <th>Participant</th>
+          <template is="dom-repeat" items="[[trackedActivities]]" as="activity">
+            <th>
+              <a href$="activity/[[activity.id]]">[[activity.doc.name]]</a>
+            </th>
+          </template>
+        </tr>
+      </thead>
+      <tbody>
+        <template is="dom-repeat" items="[[projectData.participants]]" as="participant">
+          <tr>
+            <td>
+              <fts-person-item light key="[[participant]]"></fts-person-item>
+            </td>
+            <template is="dom-repeat" items="[[trackedActivities]]">
+              <td>
+                <fts-dashboard-item activity="[[item.id]]" creator="[[participant]]"></fts-dashboard-item>
+              </td>
+            </template>
+          </tr>
+        </template>
+      </tbody>
+      <tfoot>
+        <tr>
+          <td colspan$="[[_spanLength]]">
+            <paper-icon-button icon="refresh" on-tap="_refresh"></paper-icon-button>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </template>
+  <script>
+    class FTSDashboard extends Polymer.Element {
+
+      static get is() { return 'fts-dashboard'; }
+
+      static get properties() {
+        return {
+          key: {
+            type: String,
+            observer: '_keyChanged'
+          },
+          activityDb: {
+            type: PouchDB,
+            value: new PouchDB('activity')
+          },
+          trackedActivities: {
+            type: Array,
+            readOnly: true
+          },
+          projectData: {
+            type: Object,
+            readOnly: true
+          },
+          _spanLength: {
+            computed: '_computeColspan(trackedActivities)'
+          }
+        };
+      }
+
+      _keyChanged(key) {
+        if (key.startsWith('project_')) {
+          let db = new PouchDB('project');
+          db.get(key).then((doc) => this._setProjectData(doc));
+          this.activityDb.query('tracked', {
+            include_docs: true,
+            key: key
+          }).then((result) => this._setTrackedActivities(result.rows));
+        }
+      }
+
+      _refresh() {
+        let key = this.get('key');
+        this._initProjectData(key);
+        this._initTrackedActivities(key);
+      }
+
+      _initProjectData(key) {
+        let db = new PouchDB('project');
+        db.get(key).then((doc) => this._setProjectData(doc));
+      }
+
+      _initTrackedActivities(_key) {
+        let db = this.get('activityDb');
+        db.query('tracked', {
+          include_docs: true,
+          key: _key
+        }).then((result) => this._setTrackedActivities(result.rows));
+      }
+
+      _computeColspan(arr) {
+        return arr.length + 1;
+      }
+
+    }
+
+    window.customElements.define(FTSDashboard.is, FTSDashboard);
+  </script>
+</dom-module>

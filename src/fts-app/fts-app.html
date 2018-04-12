@@ -1,0 +1,604 @@
+<link rel="import" href="../../bower_components/app-layout/app-drawer-layout/app-drawer-layout.html">
+<link rel="import" href="../../bower_components/app-layout/app-drawer/app-drawer.html">
+<link rel="import" href="../../bower_components/app-layout/app-header-layout/app-header-layout.html">
+<link rel="import" href="../../bower_components/app-layout/app-header/app-header.html">
+<link rel="import" href="../../bower_components/app-layout/app-scroll-effects/effects/waterfall.html">
+<link rel="import" href="../../bower_components/app-layout/app-toolbar/app-toolbar.html">
+<link rel="import" href="../../bower_components/app-route/app-location.html">
+<link rel="import" href="../../bower_components/app-route/app-route.html">
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../../bower_components/iron-selector/iron-selector.html">
+<link rel="import" href="../../bower_components/neon-animation/web-animations.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../../bower_components/paper-menu-button/paper-menu-button.html">
+<link rel="import" href="../../bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="../../bower_components/paper-toast/paper-toast.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/polymerfire/firebase-app.html">
+<link rel="import" href="../../bower_components/polymerfire/firebase-auth.html">
+<link rel="import" href="../common-styles/common-styles.html">
+<link rel="import" href="../fts-home/fts-home.html">
+<link rel="import" href="../fts-icons/fts-icons.html">
+<link rel="import" href="../overlay-login/overlay-login.html">
+
+<dom-module id="fts-app">
+  <template strip-whitespace>
+    <style include="common-styles"></style>
+    <style>
+      :host {
+        --primary-color: rgb(107, 159, 157);
+        --secondary-color: rgb(173, 182, 168);
+        --accent-color: var(--paper-yellow-a200);
+        --primary-background-color: #ffffff;
+        --primary-text-color: var(--paper-grey-900);
+        --secondary-text-color: var(--paper-grey-700);
+        --disabled-text-color: var(--paper-blue-grey-200);
+        --divider-color: var(--paper-grey-300);
+        --error-color: var(--paper-red-a400);
+        --app-drawer-width: 320px;
+        --app-drawer-scrim-background: rgba(0, 0, 0, 0.9);
+
+        --app-drawer-content-container: {
+          @apply --layout-vertical;
+
+          background-color: var(--primary-text-color);
+        };
+      }
+
+      [main-title],
+      [condensed-title] {
+        @apply --paper-font-title;
+
+        text-align: center;
+      }
+
+      app-header {
+        background-color: var(--primary-color);
+        color: var(--primary-background-color);
+      }
+
+      app-drawer app-toolbar {
+        @apply --layout-center-center;
+
+        background-color: var(--primary-color);
+        height: 128px;
+      }
+
+      app-drawer app-toolbar iron-image {
+        height: 100%;
+        width: 100%;
+      }
+
+      .drawer-list {
+        @apply --layout-flex;
+
+        --app-drawer-content-container_-_background-color: var(--primary-background-color);
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      .drawer-list a {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        @apply --paper-font-menu;
+
+        color: var(--primary-background-color);
+        text-decoration: none;
+        line-height: 56px;
+        padding: 0px 24px;
+      }
+
+      .drawer-list a:hover {
+        background-color: var(--accent-color);
+        color: var(--primary-text-color);
+      }
+
+      .drawer-list a.iron-selected {
+        color: var(--accent-color);
+        font-weight: 700;
+      }
+
+      .drawer-list a.iron-selected:hover {
+        background-color: transparent !important;
+      }
+
+      .drawer-list a iron-icon {
+        margin-right: 16px;
+      }
+
+      paper-menu-button .paper-material {
+        width: 280px;
+      }
+
+      paper-menu-button paper-button {
+        margin-left: 0px;
+        margin-right: 0px;
+        width: 100%;
+
+        --paper-button: {
+          @apply --paper-font-button;
+
+          color: var(--primary-text-color);
+        };
+      }
+
+      .menu-header {
+        @apply --paper-font-body2;
+
+        background-color: var(--primary-text-color);
+        text-align: center;
+        padding: 16px;
+      }
+
+      .menu-header iron-image {
+        border-radius: 50%;
+        border: 2px solid #ffffff;
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        margin-bottom: 4px;
+        height: 90px;
+        width: 90px;
+      }
+
+      paper-toast {
+        --paper-toast-color: #ffffff;
+      }
+
+      paper-toast.info {
+        --paper-toast-background-color: rgba(0, 0, 0, 0.8);
+      }
+
+      paper-toast.error {
+        --paper-toast-background-color: rgba(213, 0, 0, 0.8);
+      }
+    </style>
+
+    <!-- ROUTING ELEMENT -->
+    <app-location route="{{route}}" url-space-regex="^[[rootPath]]"></app-location>
+    <app-route route="{{route}}" pattern="[[rootPath]]:page" data="{{routeData}}" tail="{{subroute}}"></app-route>
+    <!-- FIREBASE ELEMENT -->
+    <firebase-app api-key="AIzaSyC8i-D_BWb3RrgWuZH5QEzNNHt6UM_Hl1g" auth-domain="kmol-sandbox.firebaseapp.com" database-url="https://kmol-sandbox.firebaseio.com" messaging-sender-id="291121202475" storage-bucket="kmol-sandbox.appspot.com"></firebase-app>
+    <firebase-auth id="auth" user="{{user}}" on-user-changed="_replicateUser"></firebase-auth>
+    <!-- LOGIN/REGISTER OVERLAY [SHOWN WHEN THERE IS NO AUTHENTICATED FIREBASE USER] -->
+    <overlay-login id="login" hidden$="[[_shouldRenderLogin]]" offline="[[offline]]"></overlay-login>
+    <!-- MAIN APP LAYOUT -->
+    <app-drawer-layout force-narrow fullbleed>
+      <app-drawer id="drawer" slot="drawer" opened="{{drawerOpened}}">
+        <app-toolbar>
+          <iron-image preload fade sizing="contain" alt="Principia Learning Lab" src="[[rootPath]]images/LogoFullWhite.png"></iron-image>
+        </app-toolbar>
+        <iron-selector class="drawer-list" selected="[[page]]" attr-for-selected="name" role="navigation">
+          <a name="home" href$="[[rootPath]]">
+            <iron-icon icon="home"></iron-icon>Home
+          </a>
+          <a name="profile" href$="[[rootPath]]profile">
+            <iron-icon icon="account-box"></iron-icon>My Profile
+          </a>
+        </iron-selector>
+      </app-drawer>
+      <app-header-layout has-scrolling-region>
+        <app-header slot="header" fixed reveals effect="waterfall">
+          <app-toolbar>
+            <paper-icon-button icon="menu" drawer-toggle></paper-icon-button>
+            <div main-title>Follow Through System</div>
+            <paper-menu-button no-overlap horizontal-align="right" opened="{{userMenuOpened}}">
+              <paper-icon-button icon="more-vert" slot="dropdown-trigger"></paper-icon-button>
+              <div class="paper-material" elevation="1" slot="dropdown-content">
+                <div class="menu-header">
+                  <iron-image preload fade sizing="cover" alt="Profile picture" src="[[_computeProfilePictureURL(userData.photoURL)]]"></iron-image>
+                  [[userData.displayName]]
+                </div>
+                <paper-button on-tap="_onSignOut">Sign Out</paper-button>
+              </div>
+            </paper-menu-button>
+          </app-toolbar>
+        </app-header>
+        <iron-pages selected="[[page]]" attr-for-selected="name" fallback-selection="page404" role="main">
+          <fts-home name="home"></fts-home>
+          <fts-profile name="profile"></fts-profile>
+          <fts-class id="pageclass" name="class" route="[[subroute]]" offline="[[offline]]"></fts-class>
+        </iron-pages>
+      </app-header-layout>
+    </app-drawer-layout>
+    <!-- SNACKBAR NOTIFICATION -->
+    <paper-toast id="snackbar"></paper-toast>
+  </template>
+
+  <script>
+    class FtsApp extends Polymer.Element {
+
+      static get is() { return 'fts-app'; }
+
+      static get properties() {
+        return {
+          route: Object,
+          subroute: Object,
+          routeData: Object,
+          user: Object,
+          userData: Object,
+          drawerOpened: Boolean,
+          page: {
+            type: String,
+            reflectToAttribute: true,
+            observer: '_pageChanged'
+          },
+          _shouldRenderLogin: {
+            computed: '_computeShouldRenderLogin(user)'
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routePageChanged(routeData.page)',
+          '_userChanged(user)'
+        ];
+      }
+
+      ready() {
+        super.ready();
+        this.removeAttribute('unresolved');
+        this._initProjectDesign();
+        this._initActivityDesign();
+        this._initPostDesign();
+        this._initCommentDesign();
+        this._initActivityDocumentDesign();
+        Polymer.RenderStatus.afterNextRender(this, function () {
+          window.addEventListener('offline', (e) => this._notifyNetworkStatus(e));
+          window.addEventListener('online', (e) => this._notifyNetworkStatus(e));
+          window.addEventListener('sign-in', (e) => this._onSignIn(e));
+          window.addEventListener('sign-up', (e) => this._onSignUp(e));
+          window.addEventListener('reset-password', (e) => this._onResetPassword(e));
+          window.addEventListener('submit-post', (e) => this._onSubmitPost(e));
+          window.addEventListener('announce', (e) => this._onAnnounce(e));
+        });
+      }
+
+      _initCloudantDb(dbname) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', dbname].join('/');
+        let options = {
+          ajax: {
+            headers: { Authorization: "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      _initProjectDesign() {
+        let db = new PouchDB('project');
+        db.get('_design/opened-projects').catch((error) => db.put({
+          "_id": "_design/opened-projects",
+          "filters": {
+            "user": "function(doc,req){if((doc.type==='project')&&(!doc.closed)){return(-1<doc.faculty_members.indexOf(req.query.id))||(-1<doc.participants.indexOf(req.query.id));}else return false;}"
+          },
+          "views": {
+            "opened-projects": {
+              "map": "function(doc){if(doc.type==='project'){if(!doc.closed){var p=doc.faculty_members.concat(doc.participants);p.forEach(function(element){emit(element);});}}}"
+            }
+          },
+          "language": "javascript"
+        }));
+      }
+
+      _initPostDesign() {
+        let db = new PouchDB('post');
+        db.get('_design/post').catch((error) => db.put({
+          "_id": "_design/post",
+          "filters": {
+            "filtered": "function(doc,req){if(doc.type==='post')return doc.parent===req.query.current;else return false;}"
+          },
+          "language": "javascript"
+        }));
+      }
+
+      _initCommentDesign() {
+        let db = new PouchDB('comment');
+        db.get('_design/comment').catch((error) => db.put({
+          "_id": "_design/comment",
+          "filters": {
+            "filtered": "function(doc,req){if('comment'===doc.type)return-1<doc._id.indexOf(req.query.id);else return false;}",
+            "parent": "function(doc,req){if('comment'===doc.type)return doc.parent===req.query.id;else return false;}"
+          },
+          "language": "javascript"
+        }));
+      }
+
+      _initActivityDocumentDesign() {
+        let db = new PouchDB('activity_document');
+        db.get('_design/document').catch((error) => db.put({
+          "_id": "_design/document",
+          "filters": {
+            "filtered": "function(doc,req){if(doc.type==='document'){return doc._id.indexOf(req.query.id)>-1;}else return false;}",
+            "parent": "function(doc,req){if(doc.type==='document')return doc.parent===req.query.parent;else return false;}",
+            "creator": "function(doc,req){if(doc.type==='document'){return req.query.params.includes(doc.creator);}else return false;}"
+          },
+          "language": "javascript"
+        }));
+      }
+
+      _initActivityDesign() {
+        let db = new PouchDB('activity');
+        db.bulkDocs([
+          {
+            "_id": "_design/activities",
+            "filters": {
+              "filtered": "function(doc,req){return doc._id.indexOf(req.query.id)>-1;}"
+            },
+            "language": "javascript"
+          }, {
+            "_id": "_design/formused",
+            "views": {
+              "formused": {
+                "map": "function(doc){if((doc.type==='activity')&&(doc.form))emit(doc.project,doc.form);}"
+              }
+            },
+            "language": "javascript"
+          }, {
+            "_id": "_design/tracked",
+            "views": {
+              "tracked": {
+                "map": "function(doc){if((doc.type==='activity')&&(doc.tracked))emit(doc.project,doc.form);}"
+              }
+            },
+            "language": "javascript"
+          }]);
+      }
+
+      _userChanged(user) {
+        if (Boolean(user)) this.$.login.reset();
+        else this.set('userMenuOpened', false);
+      }
+
+      _routePageChanged(page) {
+        this.page = page || 'home';
+        this.notifyPath(page);
+        this.setProperties({
+          drawerOpened: false,
+          userMenuOpened: false
+        });
+      }
+
+      _pageChanged(page, oldPage) {
+        let resolvedUrl = ['src', 'fts-' + page, 'fts-' + page + '.html'].join('/');
+        Polymer.importHref(resolvedUrl, null, this._showInvalidPage.bind(this), true);
+        switch (oldPage) {
+          case 'class':
+            this.$.pageclass.cancelSyncTask();
+            break;
+          case 'post':
+            this.$.pagepost.cancelSyncTask();
+            break;
+          case 'activity':
+            this.$.pageactivity.cancelSyncTask();
+            break;
+          case 'document':
+            this.$.pagedocument.cancelSyncTask();
+            break;
+          default:
+            break;
+        }
+      }
+
+      _computeShouldRenderLogin(user) {
+        return Boolean(user);
+      }
+
+      _computeProfilePictureURL(url) {
+        return Boolean(url) ? url : '/images/default.jpg';
+      }
+
+      _showInvalidPage() {
+        this.set('page', 'page404');
+      }
+
+      _onSignIn(e) {
+        return this.$.auth.signInWithEmailAndPassword(e.detail.email, e.detail.password).then(() => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          composed: true,
+          detail: { message: 'Signed in' }
+        }))).catch((error) => {
+          let event;
+          switch (error.code) {
+            case 'auth/invalid-email':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                detail: { type: 'error', message: 'Email or password is invalid' }
+              });
+              break;
+            case 'auth/user-disabled':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                detail: { type: 'error', message: 'Your account has been disabled' }
+              });
+              break;
+            case 'auth/user-not-found':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                detail: { type: 'error', message: 'No such account. Try to register.' }
+              });
+              break;
+            case 'auth/wrong-password':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                detail: { type: 'error', message: 'Email or password is invalid' }
+              });
+              break;
+            default:
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                detail: { type: 'error', message: error.message }
+              });
+              break;
+          }
+          this.dispatchEvent(event);
+          this.$.login.reset();
+        });
+      }
+
+      _onSignUp(e) {
+        return this.$.auth.createUserWithEmailAndPassword(e.detail.email, e.detail.password).then(() => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          composed: true,
+          detail: { message: 'Registration completed' }
+        }))).catch((error) => {
+          let event;
+          switch (error.code) {
+            case 'auth/email-already-in-use':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                composed: true,
+                detail: { type: 'error', message: 'Your email already registered. Try to sign in.' }
+              });
+              break;
+            case 'auth/invalid-email':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                composed: true,
+                detail: { type: 'error', message: 'Invalid email format' }
+              });
+              break;
+            case 'auth/weak-password':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                composed: true,
+                detail: { type: 'error', message: 'Your password is too weak. Change it and try again.' }
+              });
+              break;
+            default:
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                composed: true,
+                detail: { type: 'error', message: error.message }
+              });
+              break;
+          }
+          this.dispatchEvent(event);
+        });
+      }
+
+      _onSignOut() {
+        return this.$.auth.signOut().then(() => {
+          if (this.page !== 'home') {
+            history.pushState({}, null, Polymer.rootPath);
+            dispatchEvent(new CustomEvent('location-changed'));
+          }
+          this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: { message: 'Signed out' }
+          }));
+        }).catch((error) => dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          composed: true,
+          detail: { type: 'error', message: 'Unable to sign you out. Please try again.' }
+        })));
+      }
+
+      _onResetPassword(e) {
+        return this.$.auth.sendPasswordResetEmail(e.detail.email).then(() => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          composed: true,
+          detail: { message: 'An email has been sent to ' + e.detail.email + '. Please check your inbox or spam folder.' }
+        })), (error) => {
+          let event;
+          switch (error.code) {
+            case 'auth/invalid-email':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                composed: true,
+                detail: { type: 'error', message: 'Your email address is invalid' }
+              });
+              break;
+            case 'auth/user-not-found':
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                composed: true,
+                detail: { type: 'error', message: 'Your email address is not recognized' }
+              });
+              break;
+            default:
+              event = new CustomEvent('announce', {
+                bubbles: true,
+                composed: true,
+                detail: { type: 'error', message: error.message }
+              });
+              break;
+          }
+          this.dispatchEvent(event);
+        });
+      }
+
+      _onAnnounce(e) {
+        let snackbar = this.$.snackbar;
+        if (snackbar.opened) snackbar.hide();
+        switch (e.detail.type) {
+          case 'error':
+            snackbar.setAttribute('class', 'error');
+            break;
+          default:
+            snackbar.setAttribute('class', 'info');
+            break;
+        }
+        snackbar.text = e.detail.message;
+        snackbar.show();
+      }
+
+      _onSubmitPost(e) {
+        let db = new PouchDB('post');
+        db.put(e.detail).then((info) => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          detail: { message: 'Post submitted' }
+        })), (error) => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          detail: { type: 'error', message: error.message }
+        })));
+      }
+
+      _onSubmitComment(e) {
+        let db = new PouchDB('comment');
+        db.put(e.detail).then((info) => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          detail: { message: 'Comment submitted' }
+        })), (error) => this.dispatchEvent(new CustomEvent('announce', {
+          bubbles: true,
+          detail: { type: 'error', message: error.message }
+        })));
+      }
+
+      _replicateUser(e) {
+        if (Boolean(e.detail.value)) {
+          let remote = this._initCloudantDb('people');
+          let local = new PouchDB('people');
+          PouchDB.replicate(remote, local, {
+            checkpoint: false,
+            doc_ids: ['user_' + e.detail.value.email]
+          }).then((info) => { }, (error) => this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: { type: 'error', message: error.message }
+          }))).finally(() => local.get('user_' + e.detail.value.email).then((doc) => this.set('userData', doc)));
+        }
+      }
+
+      _notifyNetworkStatus(e) {
+        let oldOffline = this.get('offline');
+        this.set('offline', !navigator.onLine);
+        if (this.offline || (!this.offline && oldOffline === true))
+          this.dispatchEvent(new CustomEvent('announce', {
+            bubbles: true,
+            composed: true,
+            detail: { message: this.offline ? 'You are offline' : 'You are online' }
+          }));
+      }
+
+    }
+
+    window.customElements.define(FtsApp.is, FtsApp);
+  </script>
+</dom-module>

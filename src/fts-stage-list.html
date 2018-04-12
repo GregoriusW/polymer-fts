@@ -1,0 +1,475 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../bower_components/iron-collapse/iron-collapse.html">
+<link rel="import" href="fts-styles.html">
+
+<dom-module id="fts-stage-list">
+  <template>
+    <style include="fts-styles">
+      h2 {
+        @apply --layout-flex;
+        margin: 0;
+      }
+
+       :host([collapsible]) .toggle {
+        @apply --layout-horizontal;
+      }
+
+       :host([collapsible]) h2:hover {
+        cursor: pointer;
+      }
+
+      .card {
+        margin-bottom: 24px;
+        padding: 24px;
+      }
+
+      .side {
+        width: 200px;
+      }
+
+      .title {
+        color: var(--primary-text-color);
+        font-size: 1rem;
+        font-weight: 500;
+        text-transform: uppercase;
+      }
+
+      ul.unstyled {
+        margin: -24px;
+        padding-bottom: 8px;
+      }
+
+      ul.unstyled,
+      ul.dropdown {
+        list-style: none;
+        padding: 0px;
+        margin-top: 0px;
+        overflow: hidden;
+        display: block;
+      }
+
+      ul.dropdown>li,
+      ul.unstyled>li {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        @apply --paper-font-menu;
+        margin-bottom: 4px;
+        padding: 0 24px;
+        line-height: 2.5rem;
+      }
+
+      ul>li:hover {
+        cursor: pointer;
+      }
+
+      li iron-icon:first-of-type {
+        margin-right: 16px;
+      }
+
+      li iron-icon {
+        @apply --layout-flex-none;
+      }
+
+      li a {
+        @apply --layout-flex;
+        @apply --paper-font-common-nowrap;
+        text-decoration: none;
+        color: inherit;
+      }
+
+      .expand {
+        @apply --layout-flex;
+      }
+    </style>
+
+    <template is="dom-if" if="[[collapsible]]">
+      <div class="card">
+        <section>
+          <div class="toggle">
+            <h2 class="title" on-tap="_toggleCollapse">Stages</h2>
+            <iron-icon icon="[[_computeDropdownIcon(expanded)]]"></iron-icon>
+          </div>
+          <iron-collapse opened="[[expanded]]">
+            <ul class="unstyled">
+              <li on-tap="_toggleOpenedOne">
+                <iron-icon icon="looks-1"></iron-icon>
+                <span class="expand">[[project.stage_1]]</span>
+                <iron-icon icon="[[_computeDropdownIcon(openedOne)]]"></iron-icon>
+              </li>
+              <iron-collapse opened="[[openedOne]]">
+                <ul class="dropdown">
+                  <template is="dom-repeat" items="[[activitiesOne]]" as="activity">
+                    <li>
+                      <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                      <a href$="[[rootPath]]activity/[[activity.id]]">[[activity.doc.name]]</a>
+                    </li>
+                  </template>
+                </ul>
+              </iron-collapse>
+              <li on-tap="_toggleOpenedTwo">
+                <iron-icon icon="looks-2"></iron-icon>
+                <span class="expand">[[project.stage_2]]</span>
+                <iron-icon icon="[[_computeDropdownIcon(openedTwo)]]"></iron-icon>
+              </li>
+              <iron-collapse opened="[[openedTwo]]">
+                <ul class="dropdown">
+                  <template is="dom-repeat" items="[[activitiesTwo]]" as="activity">
+                    <li>
+                      <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                      <a href$="[[rootPath]]activity/[[activity.id]]">[[activity.doc.name]]</a>
+                    </li>
+                  </template>
+                </ul>
+              </iron-collapse>
+              <li on-tap="_toggleOpenedThree">
+                <iron-icon icon="looks-3"></iron-icon>
+                <span class="expand">[[project.stage_3]]</span>
+                <iron-icon icon="[[_computeDropdownIcon(openedThree)]]"></iron-icon>
+              </li>
+              <iron-collapse opened="[[openedThree]]">
+                <ul class="dropdown">
+                  <template is="dom-repeat" items="[[activitiesThree]]" as="activity">
+                    <li>
+                      <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                      <a href$="[[rootPath]]activity/[[activity.id]]">[[activity.doc.name]]</a>
+                    </li>
+                  </template>
+                </ul>
+              </iron-collapse>
+              <li on-tap="_toggleOpenedFour">
+                <iron-icon icon="looks-4"></iron-icon>
+                <span class="expand">[[project.stage_4]]</span>
+                <iron-icon icon="[[_computeDropdownIcon(openedFour)]]"></iron-icon>
+              </li>
+              <iron-collapse opened="[[openedFour]]">
+                <ul class="dropdown">
+                  <template is="dom-repeat" items="[[activitiesFour]]" as="activity">
+                    <li>
+                      <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                      <a href$="[[rootPath]]activity/[[activity.id]]">[[activity.doc.name]]</a>
+                    </li>
+                  </template>
+                </ul>
+              </iron-collapse>
+            </ul>
+          </iron-collapse>
+        </section>
+      </div>
+    </template>
+    <template is="dom-if" if="[[!collapsible]]">
+      <div class="card side">
+        <section>
+          <h2 class="title">Stages</h2>
+          <ul class="unstyled">
+            <li title$="[[_computeStageDescription(project.stage_1)]]">
+              <iron-icon icon="looks-1"></iron-icon>
+              <span class="expand">[[_computeStageName(project.stage_1)]]</span>
+            </li>
+            <template is="dom-repeat" items="[[activitiesOne]]" as="activity">
+              <li>
+                <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                <a href$="[[rootPath]]activity/[[activity.id]]" title$="[[activity.doc.name]]">[[activity.doc.name]]</a>
+              </li>
+            </template>
+            <li title$="[[_computeStageDescription(project.stage_2)]]">
+              <iron-icon icon="looks-2"></iron-icon>
+              <span class="expand">[[_computeStageName(project.stage_2)]]</span>
+            </li>
+            <template is="dom-repeat" items="[[activitiesTwo]]" as="activity">
+              <li>
+                <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                <a href$="[[rootPath]]activity/[[activity.id]]" title$="[[activity.doc.name]]">[[activity.doc.name]]</a>
+              </li>
+            </template>
+            <li title$="[[_computeStageDescription(project.stage_3)]]">
+              <iron-icon icon="looks-3"></iron-icon>
+              <span class="expand">[[_computeStageName(project.stage_3)]]</span>
+            </li>
+            <template is="dom-repeat" items="[[activitiesThree]]" as="activity">
+              <li>
+                <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                <a href$="[[rootPath]]activity/[[activity.id]]" title$="[[activity.doc.name]]">[[activity.doc.name]]</a>
+              </li>
+            </template>
+            <li title$="[[_computeStageDescription(project.stage_4)]]">
+              <iron-icon icon="looks-4"></iron-icon>
+              <span class="expand">[[_computeStageName(project.stage_4)]]</span>
+            </li>
+            <template is="dom-repeat" items="[[activitiesFour]]" as="activity">
+              <li>
+                <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                <a href$="[[rootPath]]activity/[[activity.id]]" title$="[[activity.doc.name]]">[[activity.doc.name]]</a>
+              </li>
+            </template>
+          </ul>
+        </section>
+      </div>
+    </template>
+  </template>
+  <script>
+    class FTSStageList extends Polymer.Element {
+
+      static get is() { return 'fts-stage-list'; }
+
+      static get properties() {
+        return {
+          localActivityDb: {
+            type: PouchDB,
+            value: new PouchDB('activity')
+          },
+          localFormDb: {
+            type: PouchDB,
+            value: new PouchDB('form')
+          },
+          projectId: {
+            type: String,
+            observer: '_projectIdChanged'
+          },
+          project: {
+            type: Object,
+            readOnly: true
+          },
+          collapsible: {
+            type: Boolean,
+            value: false,
+            reflectToAttribute: true
+          },
+          expanded: {
+            type: Boolean,
+            value: false
+          },
+          openedOne: {
+            type: Boolean,
+            value: false
+          },
+          openedTwo: {
+            type: Boolean,
+            value: false
+          },
+          openedThree: {
+            type: Boolean,
+            value: false
+          },
+          openedFour: {
+            type: Boolean,
+            value: false
+          },
+          activitiesOne: {
+            type: Array,
+            readOnly: true
+          },
+          activitiesTwo: {
+            type: Array,
+            readOnly: true
+          },
+          activitiesThree: {
+            type: Array,
+            readOnly: true
+          },
+          activitiesFour: {
+            type: Array,
+            readOnly: true
+          }
+        };
+      }
+
+      _projectIdChanged(id) {
+        if (id.startsWith('project_')) {
+          this.setProperties({
+            activitiesOne: [],
+            activitiesTwo: [],
+            activitiesThree: [],
+            activitiesFour: []
+          }, true);
+          let db = new PouchDB('project');
+          db.get(id).then((data) => this._setProject(data));
+          let key = 'activity_' + id;
+          if (navigator.onLine) {
+            let remote = this._computeCloudantDb('activity');
+            PouchDB.replicate(remote, this.localActivityDb, {
+              checkpoint: false,
+              filter: 'activities/filtered',
+              query_params: { id: key }
+            }).then((info) => {
+              this.dispatchEvent(new CustomEvent('notify-user', {
+                bubbles: true,
+                composed: true,
+                detail: { message: 'Class activities replication completed.' }
+              }));
+            }).finally(() => {
+              this.localActivityDb.query('formused', { key: id }).then((result) => {
+                let forms = [];
+                result.rows.forEach(function (item) {
+                  forms.push(item.value);
+                });
+                let remoteForm = this._computeCloudantDb('form');
+                PouchDB.replicate(remoteForm, this.localFormDb, {
+                  checkpoint: false,
+                  doc_ids: forms
+                });
+              });
+              for (let i = 1; i < 5; i++) {
+                this._computeActivities(i);
+              }
+            });
+          } else {
+            for (let i = 1; i < 5; i++) {
+              this._computeActivities(i);
+            }
+          }
+        }
+      }
+
+      _computeStageName(val) {
+        return val.split('|')[0];
+      }
+
+      _computeStageDescription(val) {
+        return val.split('|')[1];
+      }
+
+      _computeDropdownIcon(open) {
+        return open ? 'keyboard-arrow-up' : 'keyboard-arrow-down';
+      }
+
+      _toggleCollapse() {
+        this.set('expanded', !this.expanded);
+      }
+
+      _toggleOpenedOne() {
+        if (!this.openedOne) {
+          this.set('openedTwo', false);
+          this.set('openedThree', false);
+          this.set('openedFour', false);
+        }
+        this._initActivities(this.openedOne, 1);
+      }
+
+      _toggleOpenedTwo() {
+        if (!this.openedTwo) {
+          this.set('openedOne', false);
+          this.set('openedThree', false);
+          this.set('openedFour', false);
+        }
+        this._initActivities(this.openedTwo, 2);
+      }
+
+      _toggleOpenedThree() {
+        if (!this.openedThree) {
+          this.set('openedOne', false);
+          this.set('openedTwo', false);
+          this.set('openedFour', false);
+        }
+        this._initActivities(this.openedThree, 3);
+      }
+
+      _toggleOpenedFour() {
+        if (!this.openedFour) {
+          this.set('openedOne', false);
+          this.set('openedTwo', false);
+          this.set('openedThree', false);
+        }
+        this._initActivities(this.openedFour, 4);
+      }
+
+      _computeCloudantDb(name) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', name].join('/');
+        let options = {
+          ajax: {
+            headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      _computeActivities(index) {
+        let begin = ['activity', this.project._id, index].join('_');
+        let end = begin + '\ufff0';
+        let db = new PouchDB('activity');
+        db.allDocs({
+          include_docs: true,
+          startkey: begin,
+          endkey: end
+        }).then(docs => {
+          switch (index) {
+            case 1:
+              this._setActivitiesOne(docs.rows);
+              break;
+            case 2:
+              this._setActivitiesTwo(docs.rows);
+              break;
+            case 3:
+              this._setActivitiesThree(docs.rows);
+              break;
+            case 4:
+              this._setActivitiesFour(docs.rows);
+              break;
+            default:
+              console.error('Invalid activities index given.');
+              break;
+          }
+        });
+      }
+
+      _initActivities(opened, index) {
+        if (!opened) {
+          let startkey;
+          switch (index) {
+            case 1:
+              startkey = ['activity', this.project._id, '1'].join('_');
+              break;
+            case 2:
+              startkey = ['activity', this.project._id, '2'].join('_');
+              break;
+            case 3:
+              startkey = ['activity', this.project._id, '3'].join('_');
+              break;
+            case 4:
+              startkey = ['activity', this.project._id, '4'].join('_');
+              break;
+            default:
+              break;
+          }
+          let endkey = startkey + '\ufff0';
+          let db = new PouchDB('activity');
+          db.allDocs({
+            include_docs: true,
+            startkey: startkey,
+            endkey: endkey
+          }).then(result => {
+            switch (index) {
+              case 1:
+                this._setActivitiesOne(result.rows);
+                this.set('openedOne', true);
+                break;
+              case 2:
+                this._setActivitiesTwo(result.rows);
+                this.set('openedTwo', true);
+                break;
+              case 3:
+                this._setActivitiesThree(result.rows);
+                this.set('openedThree', true);
+                break;
+              case 4:
+                this._setActivitiesFour(result.rows);
+                this.set('openedFour', true);
+                break;
+              default:
+                break;
+            }
+          });
+        }
+      }
+
+      _resetActivities() {
+        this._setActivitiesOne([]);
+        this._setActivitiesTwo([]);
+        this._setActivitiesThree([]);
+        this._setActivitiesFour([]);
+      }
+    }
+
+    window.customElements.define(FTSStageList.is, FTSStageList);
+  </script>
+</dom-module>

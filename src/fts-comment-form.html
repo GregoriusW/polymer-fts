@@ -1,0 +1,120 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../bower_components/iron-collapse/iron-collapse.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/iron-icon/iron-icon.html">
+
+<dom-module id="fts-comment-form">
+  <template>
+    <style>
+      paper-input {
+        --paper-input-container-input: {
+          @apply --paper-font-body1;
+        }
+        ;
+      }
+
+      iron-collapse.iron-collapse-opened:first-of-type .form:hover {
+        color: var(--google-green-500);
+        cursor: pointer;
+      }
+
+      .form {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        padding: 16px;
+        min-height: 47px;
+      }
+
+      .form span {
+        @apply --paper-font-menu;
+        padding-left: 24px;
+      }
+
+      .form paper-input {
+        @apply --layout-flex;
+      }
+
+      .form paper-button {
+        @apply --layout-flex-none;
+        margin-left: 8px;
+      }
+
+      paper-button.primary {
+        background-color: var(--google-green-500);
+        color: white;
+      }
+    </style>
+
+    <iron-collapse no-animation horizontal opened="[[!opened]]">
+      <div class="form" on-tap="_toggleOpened">
+        <iron-icon icon="comment"></iron-icon>
+        <span>Add comment&hellip;</span>
+      </div>
+    </iron-collapse>
+    <iron-collapse no-animation horizontal opened="[[opened]]" on-opened-changed="_openedChanged">
+      <div class="form">
+        <paper-input no-label-float placeholder="Press ENTER to submit" value="{{content}}"></paper-input>
+        <paper-button on-tap="_toggleOpened">Cancel</paper-button>
+      </div>
+    </iron-collapse>
+  </template>
+  <script>
+    class FTSCommentForm extends Polymer.Element {
+
+      static get is() { return 'fts-comment-form'; }
+
+      static get properties() {
+        return {
+          user: Object,
+          opened: {
+            type: Boolean,
+            value: false,
+            observer: '_openedChanged'
+          }
+        };
+      }
+
+      ready() {
+        super.ready();
+        Polymer.RenderStatus.afterNextRender(this, function () {
+          this.addEventListener('keypress', this._onKeypress);
+        });
+      }
+
+      _toggleOpened() {
+        this.set('opened', !this.opened);
+      }
+
+      _openedChanged(opened) {
+        if (opened) {
+          Polymer.RenderStatus.afterNextRender(this, function () {
+            this.shadowRoot.querySelector('paper-input').focus();
+          });
+        } else
+          this.set('content', undefined);
+      }
+
+      _onKeypress(e) {
+        if ('Enter' === e.key) {
+          if (this.content) {
+            this.dispatchEvent(new CustomEvent('submit-comment', {
+              bubbles: true,
+              composed: true,
+              detail: { content: this.content }
+            }));
+          }
+        }
+      }
+
+      _reset() {
+        this.set('content', undefined);
+        this.set('opened', false);
+      }
+
+    }
+
+    window.customElements.define(FTSCommentForm.is, FTSCommentForm);
+  </script>
+</dom-module>

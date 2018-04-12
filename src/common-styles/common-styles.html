@@ -1,0 +1,33 @@
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../../bower_components/paper-styles/element-styles/paper-material-styles.html">
+
+<dom-module id="common-styles">
+  <template strip-whitespace>
+    <style include="paper-material-styles"></style>
+    <style>
+      [hidden] {
+        display: none !important;
+      }
+
+      .paper-material {
+        background-color: #ffffff;
+      }
+
+      .backdrop {
+        background-color: rgba(0, 0, 0, 0.75);
+        position: fixed !important;
+        top: 0px;
+        bottom: 0px;
+        left: 0px;
+        right: 0px;
+      }
+
+      .fab {
+        position: fixed !important;
+        right: 24px;
+        bottom: 24px;
+        z-index: 1;
+      }
+    </style>
+  </template>
+</dom-module>

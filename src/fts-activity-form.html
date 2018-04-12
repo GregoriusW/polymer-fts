@@ -1,0 +1,309 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymerfire/firebase-auth.html">
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-dialog-scrollable/paper-dialog-scrollable.html">
+<link rel="import" href="../bower_components/neon-animation/web-animations.html">
+<link rel="import" href="../bower_components/neon-animation/animations/scale-up-animation.html">
+<link rel="import" href="../bower_components/neon-animation/animations/scale-down-animation.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-dropdown-menu/paper-dropdown-menu-light.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="fts-icons.html">
+<link rel="import" href="fts-dynamic-field.html">
+
+<dom-module id="fts-activity-form">
+  <template>
+    <style>
+      @media (max-width: 800px) {
+        #form {
+          width: calc(100% - 48px);
+        }
+      }
+
+      paper-fab {
+        --paper-fab-background: var(--primary-color);
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+      }
+
+      #form {
+        width: 100%;
+        max-width: 760px;
+      }
+
+      #form>.header {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        @apply --paper-font-title;
+        background-color: var(--primary-color);
+        color: white;
+        margin-top: 0;
+        line-height: 3;
+      }
+
+      #form>.header>span {
+        @apply --layout-flex;
+      }
+
+      #form>paper-dialog-scrollable {
+        @apply --layout-vertical;
+        margin-top: 0;
+        --paper-dialog-scrollable: {
+          height: 300px;
+        }
+      }
+
+      .overlay {
+        background-color: rgba(0, 0, 0, .5);
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        z-index: 10;
+      }
+
+      paper-button.primary {
+        background-color: var(--primary-color);
+        color: white;
+      }
+
+      paper-button[disabled] {
+        background-color: #eaeaea;
+        color: white;
+      }
+    </style>
+
+    <firebase-auth user="{{user}}"></firebase-auth>
+
+    <paper-fab icon="add" on-tap="_openForm"></paper-fab>
+    <paper-dialog id="form" opened="{{opened}}" entry-animation="scale-up-animation" exit-animation="scale-down-animation" no-cancel-on-outside-click
+      no-cancel-on-esc-key>
+      <div class="header">
+        <span>[[_computeFormTitle(key)]]</span>
+        <paper-icon-button icon="clear" dialog-dismiss></paper-icon-button>
+      </div>
+      <paper-dialog-scrollable>
+        <template is="dom-repeat" items="[[fields]]" as="field">
+          <fts-dynamic-field label="[[field.label]]" field-type="[[field.fieldType]]" min="[[field.min]]" max="[[field.max]]"></fts-dynamic-field>
+        </template>
+      </paper-dialog-scrollable>
+      <div class="buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <template is="dom-if" if="[[shouldRenderFacultyOnlyFeature]]">
+          <paper-button disabled="[[busy]]" on-tap="_onSubmitWithAlias">[[_computeAliasButtonLabel(selectedAlias)]]</paper-button>
+        </template>
+        <paper-button disabled="[[busy]]" class="primary" on-tap="_onFormSubmit">[[_computeSubmitButtonLabel(busy)]]</paper-button>
+      </div>
+    </paper-dialog>
+    <template is="dom-if" if="[[shouldRenderFacultyOnlyFeature]]">
+      <paper-dialog id="aliaspicker" no-cancel-on-outside-click no-cancel-on-esc-key>
+        <div class="header">
+          Select an alias
+        </div>
+        <paper-dropdown-menu-light no-label-float>
+          <paper-listbox slot="dropdown-content" selected="{{selectedAlias}}" attr-for-selected="data-value">
+            <template is="dom-repeat" items="[[projectData.participants]]">
+              <paper-item data-value$="[[item]]">[[_computeAliasLabel(item)]]</paper-item>
+            </template>
+          </paper-listbox>
+        </paper-dropdown-menu-light>
+        <div class="buttons">
+          <paper-button dialog-dismiss on-tap="_onCancelAlias">Cancel</paper-button>
+          <paper-button dialog-dismiss>Confirm</paper-button>
+        </div>
+      </paper-dialog>
+    </template>
+    <div hidden$="[[!opened]]" class="overlay"></div>
+  </template>
+  <script>
+    class FTSActivityForm extends Polymer.Element {
+
+      static get is() { return 'fts-activity-form'; }
+
+      static get properties() {
+        return {
+          parent: {
+            type: String,
+            observer: '_parentChanged'
+          },
+          projectId: {
+            type: String,
+            readOnly: true,
+            observer: '_projectIdChanged'
+          },
+          designId: {
+            type: String,
+            observer: '_designIdChanged'
+          },
+          projectData: {
+            type: Object,
+            readOnly: true
+          },
+          key: {
+            type: String,
+            value: 'new'
+          },
+          selectedAlias: {
+            type: String,
+            value: null
+          },
+          values: Array,
+          busy: {
+            type: Boolean,
+            readOnly: true,
+            value: false
+          },
+          shouldRenderFacultyOnlyFeature: {
+            type: Boolean,
+            value: false,
+            readOnly: true
+          }
+        };
+      }
+
+      _parentChanged(id) {
+        if (id.startsWith('activity_')) {
+          this._setProjectId(id.substr(9, 33));
+          let db = new PouchDB('activity');
+          db.get(id).then((doc) => this.set('designId', doc.form)).catch((err) => console.log(err));
+        }
+      }
+
+      _projectIdChanged(id) {
+        let db = new PouchDB('project');
+        db.get(id).then((doc) => {
+          let render = this._computeShouldRenderFacultyOnlyFeature(doc);
+          this._setShouldRenderFacultyOnlyFeature(render);
+          this._setProjectData(doc);
+        });
+      }
+
+      _designIdChanged(id) {
+        this.set('fields', []);
+        let db = new PouchDB('form');
+        db.get(id).then((doc) => this.set('fields', doc.fields)).catch((e) => console.error(e));
+      }
+
+      _computeFormTitle(key) {
+        return key === 'new' ? 'New Document' : 'Edit Document';
+      }
+
+      _computeShouldRenderFacultyOnlyFeature(project) {
+        let uid = 'user_' + this.get('user.email');
+        return project.faculty_members.includes(uid);
+      }
+
+      _openForm() {
+        this.$.form.open();
+      }
+
+      _closeForm() {
+        let fields = this.shadowRoot.querySelectorAll('fts-dynamic-field');
+        if (fields.length > 0) {
+          fields.forEach(function (element) {
+            element.reset();
+          });
+        }
+        this.$.form.close();
+      }
+
+      _collectValues() {
+        let fields = this.shadowRoot.querySelectorAll('fts-dynamic-field');
+        this.set('values', []);
+        fields.forEach(element => {
+          let value = element.getValue();
+          if (value) this.push('values', element.getValue());
+        });
+      }
+
+      _onFormSubmit() {
+        this._collectValues();
+        if (this.get('values').length > 0) {
+          let blob = this.values.find(function (element) {
+            return element instanceof FileList;
+          });
+          if (blob) {
+            let index = this.values.findIndex(this.__findFileList);
+            let path = 'values.' + index;
+            let storage = firebase.storage();
+            let storageRef = storage.ref();
+            let file = blob.item(0);
+            let attachmentRef = storageRef.child(['attachment', this.parent, Date.now(), file.name].join('/'));
+            this._setBusy(true);
+            attachmentRef.put(file).then((snapshot) => {
+              this._setBusy(false);
+              this.set(path, snapshot.downloadURL);
+              this.__dispatchSubmitEvent(this.get('selectedAlias'));
+            });
+          } else
+            this.__dispatchSubmitEvent(this.get('selectedAlias'));
+        } else {
+          let e = new CustomEvent('notify-user', {
+            bubbles: true,
+            composed: true,
+            detail: { message: 'Could not submit an empty document.' }
+          });
+          this.dispatchEvent(e);
+        }
+      }
+
+      _onCancelAlias() {
+        this.set('selectedAlias', null);
+      }
+
+      _onSubmitWithAlias() {
+        this.root.querySelector('#aliaspicker').open();
+      }
+
+      __dispatchSubmitEvent(alias) {
+        let _values = this.get('values');
+        let now = Date.now(), _type = 'document', _parent = this.get('parent');
+        let _creator = alias ? alias : 'user_' + this.get('user.email');
+        let _signer = 'user_' + this.get('user.email');
+        let id = [_type, _parent, _creator, now].join('_');
+        let event = new CustomEvent('submit-activity', {
+          bubbles: true,
+          composed: true,
+          detail: {
+            _id: id,
+            type: _type,
+            created: now,
+            creator: _creator,
+            signer: _signer,
+            parent: _parent,
+            values: _values
+          }
+        });
+        if (this.get('values').includes('\0')) {
+          let cont = confirm("Some values were left blank.\nContinue submitting?");
+          if (cont) this.dispatchEvent(event);
+        } else
+          this.dispatchEvent(event);
+      }
+
+      _computeAliasButtonLabel(alias) {
+        return alias ? this._computeAliasLabel(alias) : 'Select an alias';
+      }
+
+      _computeSubmitButtonLabel(busy) {
+        return busy ? 'Submitting...' : 'Submit';
+      }
+
+      _computeAliasLabel(text) {
+        return text.substr(5);
+      }
+
+      __findFileList(element) {
+        return element instanceof FileList;
+      }
+
+    }
+
+    window.customElements.define(FTSActivityForm.is, FTSActivityForm);
+  </script>
+</dom-module>

@@ -1,0 +1,274 @@
+<link rel="import" href="../../bower_components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../../bower_components/neon-animation/animations/scale-down-animation.html">
+<link rel="import" href="../../bower_components/neon-animation/animations/scale-up-animation.html">
+<link rel="import" href="../../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../../bower_components/paper-styles/element-styles/paper-material-styles.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+
+<dom-module id="overlay-login">
+  <template strip-whitespace>
+    <style include="paper-material-styles"></style>
+    <style>
+      :host {
+        @apply --layout-vertical;
+        @apply --layout-center-center;
+
+        background-color: #eeeeee;
+        color: var(--primary-text-color);
+        position: fixed;
+        top: 0px;
+        bottom: 0px;
+        left: 0px;
+        right: 0px;
+        z-index: 1;
+
+        --paper-input-container-label: {
+          @apply --paper-font-code1;
+        };
+        --paper-input-container-input: {
+          @apply --paper-font-code1;
+        };
+        --paper-button: {
+          @apply --paper-font-button;
+
+          text-align: center;
+        };
+      }
+
+      @media (max-width: 600px) {
+        .paper-material {
+          @apply --shadow-none;
+
+          width: 100vw;
+          height: 100vh;
+        }
+
+        .content {
+          margin: 16px;
+        }
+      }
+
+      @media (min-width: 601px) {
+        .paper-material {
+          width: 400px;
+          height: auto;
+        }
+
+        .content {
+          margin: 40px 25px 30px;
+        }
+      }
+
+      paper-dialog paper-input {
+        margin-top: 0px;
+      }
+
+      p {
+        margin-top: 0px;
+        margin-bottom: 0px;
+      }
+
+      iron-image {
+        height: 75px;
+        width: 100%;
+        max-width: 300px;
+      }
+
+      paper-button {
+        margin-left: 0px;
+        margin-right: 0px;
+        width: 100%;
+      }
+
+      paper-button[disabled] {
+        background-color: transparent !important;
+        color: var(--disabled-text-color) !important;
+      }
+
+      paper-button[raised] {
+        background-color: var(--primary-color);
+        color: #ffffff;
+      }
+
+      paper-button:not([raised]) {
+        color: var(--primary-color);
+      }
+
+      paper-button+paper-button {
+        margin-left: 8px;
+      }
+
+      .paper-dialog-buttons paper-button {
+        @apply --layout-flex;
+
+        width: auto;
+      }
+
+      .paper-material {
+        background-color: #fff;
+      }
+
+      .primary {
+        @apply --paper-font-headline;
+      }
+
+      .secondary {
+        @apply --paper-font-subhead;
+      }
+
+      .tertiary {
+        @apply --paper-font-body2;
+
+        color: var(--error-color);
+        margin: 0.5em;
+        text-align: center;
+      }
+
+      .separator {
+        @apply paper-font-body1;
+        margin: 0.5em 0;
+        text-align: center;
+      }
+
+      .link {
+        @apply --paper-font-body2;
+
+        background: transparent;
+        border: none;
+        color: var(--paper-blue-500);
+        padding: 0px;
+        margin: 1em 0;
+      }
+
+      .link:hover {
+        cursor: pointer;
+      }
+    </style>
+
+    <div class="paper-material" elevation="1">
+      <div class="content">
+        <iron-image preload fade sizing="contain" src="[[rootPath]]images/LogoFullColored.png" alt="Principia Learning Lab" placeholder="data:image/png;base64,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"></iron-image>
+        <p class="primary">Sign In</p>
+        <p class="secondary">to begin your session</p>
+        <p id="message" class="tertiary" hidden$="[[!_shouldRenderMessage]]">[[errorMessage]]</p>
+        <paper-input id="email" autofocus auto-validate disabled="[[offline]]" type="email" value="{{userMail}}" label="Email" error-message="Invalid email format"
+          on-keypress="onKeypress" on-blur="_sanitizeEmail"></paper-input>
+        <paper-input id="password" type="password" disabled="[[offline]]" value="{{userPassword}}" label="Password" on-keypress="onKeypress"></paper-input>
+        <button class="link" on-tap="toggleForgot">Forgot password?</button>
+        <paper-button raised disabled="[[offline]]" on-tap="_dispatchLoginEvent">Sign In</paper-button>
+        <p class="separator">- OR -</p>
+        <paper-button disabled="[[offline]]" on-tap="_dispatchRegisterEvent">Register</paper-button>
+      </div>
+    </div>
+    <div hidden$="[[!dialogOpened]]" style="background-color:rgba(0,0,0,0.75);position:fixed;top:0px;bottom:0px;left:0px;right:0px;z-index:2;"></div>
+    <paper-dialog no-cancel-on-outside-click no-cancel-on-esc-key opened="{{dialogOpened}}" id="forgotdialog" entry-animation="scale-up-animation" exit-animation="scale-down-animation">
+      <h2>Reset Your Password</h2>
+      <p>We are going to send you an email with instruction to reset your password.</p>
+      <p>Please enter your registered email below.</p>
+      <paper-input no-label-float disabled="[[offline]]" value="{{userMail}}" placeholder="Your email" on-blur="_sanitizeEmail"></paper-input>
+      <div class="paper-dialog-buttons">
+        <paper-button dialog-dismiss>Cancel</paper-button>
+        <paper-button raised dialog-confirm disabled="[[offline]]" on-tap="_handleReset">Confirm</paper-button>
+      </div>
+    </paper-dialog>
+  </template>
+  <script>
+    class OverlayLogin extends Polymer.Element {
+
+      static get is() { return 'overlay-login'; }
+
+      static get properties() {
+        return {
+          userMail: String,
+          userPassword: String,
+          errorMessage: String,
+          offline: Boolean,
+          _shouldRenderMessage: {
+            computed: '_computeShouldRenderMessage(errorMessage)'
+          }
+        };
+      }
+
+      _computeShouldRenderMessage(message) {
+        return Boolean(message);
+      }
+
+      _sanitizeEmail(e) {
+        let oldValue = e.target.value;
+        if (Boolean(oldValue)) e.target.value = oldValue.trim().toLowerCase();
+      }
+
+      onKeypress(e) {
+        if (e.key === 'Enter') {
+          if (this.validateInput()) this._dispatchLoginEvent();
+        }
+      }
+
+      validateInput() {
+        if (!Boolean(this.userMail) || (this.userMail.length < 4)) {
+          this.set('errorMessage', 'Please enter an email address');
+          this.$.email.focus();
+          return false;
+        } else if (!Boolean(this.userPassword) || this.userPassword.length < 4) {
+          this.set('errorMessage', 'Please enter your password');
+          this.$.password.focus();
+          return false;
+        } else
+          return true;
+      }
+
+      _dispatchLoginEvent() {
+        if (this.validateInput()) {
+          this.dispatchEvent(new CustomEvent('sign-in', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              email: this.userMail,
+              password: this.userPassword
+            }
+          }));
+          this.set('errorMessage', undefined);
+        }
+      }
+
+      _dispatchRegisterEvent() {
+        if (this.validateInput()) {
+          this.dispatchEvent(new CustomEvent('sign-up', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              email: this.userMail,
+              password: this.userPassword
+            }
+          }));
+          this.set('errorMessage', undefined);
+        }
+      }
+
+      toggleForgot() {
+        this.$.forgotdialog.toggle();
+      }
+
+      _handleReset() {
+        this.dispatchEvent(new CustomEvent('reset-password', {
+          bubbles: true,
+          composed: true,
+          detail: { email: this.userMail }
+        }));
+      }
+
+      reset() {
+        this.setProperties({
+          userMail: undefined,
+          userPassword: undefined,
+          errorMessage: undefined
+        });
+      }
+    }
+
+    window.customElements.define(OverlayLogin.is, OverlayLogin);
+  </script>
+</dom-module>

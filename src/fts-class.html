@@ -1,0 +1,472 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/iron-media-query/iron-media-query.html">
+<link rel="import" href="../bower_components/paper-tabs/paper-tabs.html">
+<link rel="import" href="../bower_components/paper-tabs/paper-tab.html">
+<link rel="import" href="../bower_components/iron-pages/iron-pages.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+<link rel="import" href="../bower_components/paper-dropdown-menu/paper-dropdown-menu-light.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="fts-styles.html">
+<link rel="import" href="fts-stage-list.html">
+<link rel="import" href="fts-post-item.html">
+<link rel="import" href="fts-post-form.html">
+<link rel="import" href="fts-dashboard.html">
+
+<dom-module id="fts-class">
+  <template>
+    <style include="fts-styles">
+      .header {
+        background-position: center top;
+        background-repeat: no-repeat;
+        background-size: cover;
+        box-sizing: border-box;
+        width: 100%;
+        height: 270px;
+        position: relative;
+      }
+
+      .header>.header-content {
+        @apply --layout-vertical;
+        @apply --layout-center-center;
+        background-color: rgba(0, 0, 0, .5);
+        padding-left: 72px;
+        padding-right: 72px;
+        height: 100%;
+        color: white;
+        overflow: hidden;
+      }
+
+      h1 {
+        text-align: center;
+      }
+
+      .content {
+        @apply --layout;
+        @apply --layout-center-justified;
+        margin: 24px;
+      }
+
+      main,
+      aside {
+        @apply --layout-vertical;
+      }
+
+      main {
+        @apply --layout-flex;
+        padding-bottom: 96px;
+        overflow: hidden;
+      }
+
+      aside>* {
+        margin-right: 24px !important;
+      }
+
+      main .card,
+      aside .card {
+        margin-bottom: 24px;
+      }
+
+      .paging {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+      }
+
+      .spacer {
+        @apply --layout-flex;
+      }
+
+      paper-button {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      paper-button.refresh {
+        @apply --layout-self-center;
+      }
+
+      .block {
+        width: 100%;
+      }
+
+      paper-button iron-icon {
+        margin-right: 8px;
+      }
+
+      paper-tabs {
+        --paper-tabs-selection-bar-color: var(--primary-color);
+      }
+
+      paper-tab {
+        --paper-tab-ink: var(--paper-teal-100);
+      }
+
+      iron-pages>div {
+        @apply --layout-vertical;
+      }
+
+      .table {
+        min-width: 100%;
+      }
+    </style>
+
+    <app-route route="[[route]]" pattern="/:identifier" data="{{routeData}}"></app-route>
+    <iron-media-query query="(max-width: 800px)" query-matches="{{narrow}}"></iron-media-query>
+
+    <div>
+      <div class="header" style$="[[headerBackground]]">
+        <div class="header-content">
+          <h1>
+            <strong>[[projectData.title]]</strong>
+          </h1>
+        </div>
+      </div>
+    </div>
+    <div class="content">
+      <template is="dom-if" if="[[!narrow]]">
+        <aside>
+          <fts-stage-list project-id="[[routeData.identifier]]"></fts-stage-list>
+        </aside>
+      </template>
+      <main>
+        <template is="dom-if" if="[[shouldRenderViewToggle]]">
+          <paper-tabs class="card" selected="{{view}}" attr-for-selected="name">
+            <paper-tab name="post">Posts</paper-tab>
+            <paper-tab name="dashboard">Dashboard</paper-tab>
+          </paper-tabs>
+        </template>
+        <iron-pages selected="[[view]]" attr-for-selected="name">
+          <fts-dashboard name="dashboard" key="[[routeData.identifier]]"></fts-dashboard>
+          <div name="post">
+            <template is="dom-if" if="[[narrow]]">
+              <fts-stage-list collapsible project-id="[[routeData.identifier]]"></fts-stage-list>
+            </template>
+            <template is="dom-if" if="[[hasNewPost]]">
+              <paper-button class="refresh card" on-tap="_refreshPosts">
+                <iron-icon icon="refresh"></iron-icon>
+                Click to refresh posts
+              </paper-button>
+            </template>
+            <template is="dom-repeat" items="[[displayedPosts]]" as="post">
+              <fts-post-item identifier="[[post.id]]"></fts-post-item>
+            </template>
+            <div class="paging">
+              <template is="dom-if" if="[[previousStartKey]]">
+                <paper-button class="card" on-tap="_prev">
+                  <iron-icon icon="keyboard-arrow-left"></iron-icon>
+                </paper-button>
+              </template>
+              <div class="spacer"></div>
+              <paper-dropdown-menu-light label="Posts shown per page">
+                <paper-listbox slot="dropdown-content" selected="{{postsPerPage}}" attr-for-selected="data-value">
+                  <paper-item data-value="5">5</paper-item>
+                  <paper-item data-value="10">10</paper-item>
+                  <paper-item data-value="20">20</paper-item>
+                </paper-listbox>
+              </paper-dropdown-menu-light>
+              <div class="spacer"></div>
+              <template is="dom-if" if="[[nextStartKey]]">
+                <paper-button class="card" on-tap="_next">
+                  <iron-icon icon="keyboard-arrow-right"></iron-icon>
+                </paper-button>
+              </template>
+            </div>
+          </div>
+        </iron-pages>
+      </main>
+    </div>
+    <fts-post-form id="form" user="[[user]]"></fts-post-form>
+  </template>
+
+  <script>
+    class FTSClass extends Polymer.Element {
+
+      static get is() { return 'fts-class'; }
+
+      static get properties() {
+        return {
+          postLocalDb: {
+            type: PouchDB,
+            value: new PouchDB('post')
+          },
+          commentLocalDb: {
+            type: PouchDB,
+            value: new PouchDB('comment')
+          },
+          postRemoteDb: {
+            type: PouchDB,
+            computed: '__computeCloudantDb("post")'
+          },
+          commentRemoteDb: {
+            type: PouchDB,
+            computed: '__computeCloudantDb("comment")'
+          },
+          postsPerPage: {
+            type: String,
+            value: '5',
+            observer: '_postsPerPageChanged'
+          },
+          previousStartKey: String,
+          currentStartKey: String,
+          nextStartKey: String,
+          posts: Array,
+          displayedPosts: {
+            type: Array,
+            readOnly: true
+          },
+          hasNewPost: {
+            type: Boolean,
+            value: false
+          },
+          formOpened: Boolean,
+          user: {
+            type: Object,
+            observer: '_userChanged'
+          },
+          userData: Object,
+          route: Object,
+          routeData: Object,
+          projectData: Object,
+          postSync: Object,
+          commentSync: Object,
+          view: {
+            type: String,
+            value: 'post',
+            reflectToAttribute: true
+          },
+          headerBackground: {
+            type: String,
+            readOnly: true
+          },
+          shouldRenderViewToggle: {
+            type: Boolean,
+            value: false,
+            readOnly: true
+          },
+          _shouldRenderPosts: {
+            computed: '_computeShouldRenderPosts(view)'
+          },
+          _shouldRenderDashboard: {
+            computed: '_computeShouldRenderDashboard(view)'
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routeIdentifierChanged(routeData.identifier)'
+        ];
+      }
+
+      ready() {
+        super.ready();
+        this.removeAttribute('unresolved');
+        Polymer.RenderStatus.afterNextRender(this, function () {
+          this.addEventListener('submit-post', (e) => this._onSubmitPost(e));
+          this.addEventListener('new-comment', (e) => this._onNewComment(e));
+          this._initiateSyncTasks();
+        });
+      }
+
+      _fetchPosts(start) {
+        let startKey, endKey = 'post_' + this.get('routeData.identifier');
+        if (start === '') {
+          this.set('previousStartKey', null);
+          startKey = endKey + '\ufff0';
+        } else
+          startKey = start;
+        let max = Number.parseInt(this.get('postsPerPage'), 10);
+        this.postLocalDb.allDocs({
+          descending: true,
+          startkey: startKey,
+          endkey: endKey,
+          limit: max + 1
+        }).then(result => this._computeDisplayedPosts(result.rows));
+      }
+
+      _computeDisplayedPosts(rows) {
+        let max = Number.parseInt(this.get('postsPerPage'), 10);
+        this.postLocalDb.allDocs({
+          limit: max + 1,
+          startkey: rows[0].id,
+          endkey: rows[0].id.substr(0, 38) + '\ufff0'
+        }).then(result => {
+          let result_length = result.rows.length;
+          if (result_length > max)
+            this.set('previousStartKey', result.rows[result_length - 1].id);
+          else
+            this.set('previousStartKey', null);
+        });
+        this.set('currentStartKey', rows[0].id);
+        if (rows.length > max)
+          this.set('nextStartKey', rows[max].id);
+        else
+          this.set('nextStartKey', null);
+        let shown = rows.length > max ? rows.slice(undefined, max) : rows;
+        this._setDisplayedPosts(shown);
+      }
+
+      _computeHeaderBackgroundURL(url) {
+        let path = url ? url : Polymer.rootPath + 'images/bg_banner03.jpg';
+        this._setHeaderBackground("background-image:url('" + path + "')");
+      }
+
+      _onSubmitPost(e) {
+        let post = e.detail;
+        let now = Date.now();
+        post._id = ['post', this.get('routeData.identifier'), now, 'user', this.get('user.email')].join('_');
+        post.timestamp = now;
+        post.creator = 'user_' + this.get('user.email');
+        post.parent = this.get('routeData.identifier');
+        this.postLocalDb.put(post).then(response => {
+          this.$.form._closeForm();
+        });
+      }
+
+      _postsPerPageChanged(num) {
+        this._fetchPosts('');
+      }
+
+      _refreshPosts() {
+        this._fetchPosts('');
+        this.set('hasNewPost', false);
+      }
+
+      _prev() {
+        this._fetchPosts(this.previousStartKey);
+      }
+
+      _next() {
+        this._fetchPosts(this.nextStartKey);
+      }
+
+      _onNewComment(e) {
+        let data = e.detail;
+        let now = Date.now();
+        data.timestamp = now;
+        data.creator = 'user_' + this.user.email;
+        data._id = ['comment', data.parent, now, 'user', this.user.email].join('_');
+        this.commentLocalDb.put(data).then((response) => e.path[0]._refreshComments(data.parent));
+      }
+
+      _userChanged(user) {
+        if (user) {
+          var db = new PouchDB('people');
+          db.get('user_' + user.email).then((doc) => this.set('userData', doc));
+        }
+      }
+
+      _routeIdentifierChanged(id) {
+        if (id.startsWith('project_')) {
+          this.set('posts', []);
+          let db = new PouchDB('project');
+          db.get(id).then((doc) => {
+            this._computeHeaderBackgroundURL(doc.header_background);
+            this.set('projectData', doc);
+          });
+          let localAcl = new PouchDB('acl');
+          let remoteAcl = this.__computeCloudantDb('acl');
+          let aclKey = ['acl', id, 'user', this.get('user.email')].join('_');
+          PouchDB.replicate(remoteAcl, localAcl, {
+            checkpoint: false,
+            doc_ids: [aclKey]
+          }).then((info) => console.log('ACL configuration replicated.')).finally(() => this._computeShouldRenderViewToggle(aclKey));
+        }
+      }
+
+      __computeCloudantDb(dbname) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', dbname].join('/');
+        let options = {
+          ajax: {
+            headers: {
+              "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng=="
+            }
+          }
+        };
+        return new PouchDB(path, options);
+      }
+
+      _computeShouldRenderPosts(view) {
+        return view === 'posts';
+      }
+
+      _computeShouldRenderDashboard(view) {
+        return view === 'dashboard';
+      }
+
+      _computeShouldRenderViewToggle(key) {
+        let uid = 'user_' + this.get('user.email');
+        let faculties = this.get('projectData.faculty_members');
+        let isFaculty = faculties.includes(uid);
+        this._setShouldRenderViewToggle(isFaculty);
+      }
+
+      _closeForm() {
+        this.set('formOpened', false);
+      }
+
+      _clearPost() {
+        this._setDisplayedPosts([]);
+      }
+
+      _initiateSyncTasks() {
+        console.info('[' + this.routeData.identifier + '] Initializing post sync task.');
+        let local = new PouchDB('post');
+        let remote = this.__computeCloudantDb('post');
+        PouchDB.replicate(this.postLocalDb, this.postRemoteDb, {
+          checkpoint: false,
+          filter: 'post/filtered',
+          query_params: { current: this.routeData.identifier }
+        }).on('complete', info => {
+          let sync = PouchDB.sync(this.postLocalDb, this.postRemoteDb, {
+            checkpoint: false,
+            live: true,
+            retry: true,
+            filter: 'post/filtered',
+            query_params: { current: this.routeData.identifier }
+          }).on('change', (info) => {
+            if (info.change.docs_written > 0) {
+              this.dispatchEvent(new CustomEvent('notify-user', {
+                bubble: true,
+                composed: true,
+                detail: {
+                  message: 'New post received.'
+                }
+              }));
+              this.set('hasNewPost', true);
+            }
+          });
+          this.set('postSync', sync);
+          this._fetchPosts('');
+        });
+        console.info('[' + this.routeData.identifier + '] Initializing comment sync task.');
+        let local1 = new PouchDB('comment');
+        let remote1 = this.__computeCloudantDb('comment');
+        PouchDB.replicate(local1, remote1, {
+          checkpoint: false,
+          filter: 'comment/filtered',
+          query_params: { id: this.routeData.identifier }
+        }).on('complete', info => {
+          let sync = PouchDB.sync(local1, remote1, {
+            checkpoint: false,
+            live: true,
+            retry: true,
+            filter: 'comment/filtered',
+            query_params: { id: this.routeData.identifier }
+          });
+          this.set('commentSync', sync);
+        });
+      }
+
+      _cancelAllListener() {
+        console.info('[' + this.routeData.identifier + '] Canceling all tasks.');
+        this.postSync.cancel();
+        this.commentSync.cancel();
+      }
+
+    }
+
+    window.customElements.define(FTSClass.is, FTSClass);
+  </script>
+</dom-module>

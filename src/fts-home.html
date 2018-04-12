@@ -1,0 +1,93 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="fts-class-item.html">
+
+<dom-module id="fts-home">
+  <template>
+    <style>
+      .wrapper {
+        @apply --layout;
+        @apply --layout-wrap;
+        padding-left: 24px;
+        padding-top: 24px;
+      }
+    </style>
+
+    <div class="wrapper">
+      <template is="dom-repeat" items="[[projects]]" as="project">
+        <fts-class-item identifier="[[project.id]]"></fts-class-item>
+      </template>
+    </div>
+  </template>
+
+  <script>
+    class FTSHome extends Polymer.Element {
+
+      static get is() { return 'fts-home'; }
+
+      static get properties() {
+        return {
+          user: {
+            type: Object,
+            observer: '_userChanged'
+          },
+          projectLocalDb: {
+            type: PouchDB,
+            value: new PouchDB('project')
+          },
+          projectRemoteDb: {
+            computed: '_computeDb("project")'
+          },
+          projects: {
+            type: Array,
+            readOnly: true
+          }
+        };
+      }
+
+      ready() {
+        super.ready();
+        this.removeAttribute('unresolved');
+      }
+
+      _userChanged(user) {
+        let local = new PouchDB('project');
+        if (navigator.onLine) {
+          let remote = this._computeDb('project');
+          PouchDB.replicate(remote, local, {
+            checkpoint: false,
+            filter: 'opened-projects/user',
+            query_params: { id: 'user_' + user.email }
+          }).then(info => {
+            local.query('opened-projects', {
+              key: 'user_' + user.email
+            }).then(result => {
+              this._setProjects(result.rows);
+            });
+          }).catch(err => {
+            local.query('opened-projects', {
+              key: 'user_' + user.email
+            }).then(result => {
+              this._setProjects(result.rows);
+            });
+          });
+        } else {
+          console.info('Offline. Try fetching class from local db. This will not work if you have not connected before.');
+          local.query('opened-projects', {
+            key: 'user_' + user.email
+          }).then(result => {
+            this._setProjects(result.rows);
+          });
+        }
+      }
+
+      _computeDb(remote_name) {
+        let path = 'https://fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com/' + remote_name;
+        let opt = { ajax: { headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" } } };
+        return new PouchDB(path, opt);
+      }
+
+    }
+
+    window.customElements.define(FTSHome.is, FTSHome);
+  </script>
+</dom-module>

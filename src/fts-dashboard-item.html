@@ -1,0 +1,118 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="../bower_components/paper-styles/shadow.html">
+
+<dom-module id="fts-dashboard-item">
+  <template>
+    <style>
+       :host {
+        @apply --layout-vertical;
+        @apply --layout-center;
+      }
+
+      paper-icon-button {
+        --paper-icon-button: {
+          border-radius: 50%;
+        };
+        --paper-icon-button-hover: {
+          @apply --shadow-elevation-2dp;
+          @apply --shadow-transition;
+        };
+      }
+
+      .green {
+        color: green;
+      }
+
+      .red {
+        color: red;
+      }
+    </style>
+
+    <paper-icon-button hidden="[[shouldRenderFalseIcon]]" disabled="[[busy]]" class="green" icon="[[_computeCheckedIcon(busy)]]" on-tap="_refresh"></paper-icon-button>
+    <paper-icon-button hidden="[[shouldRenderTrueIcon]]" disabled="[[busy]]" class="red" icon="[[_computeCrossedIcon(busy)]]" on-tap="_refresh"></paper-icon-button>
+  </template>
+  <script>
+    class FTSDashboardItem extends Polymer.Element {
+
+      static get is() { return 'fts-dashboard-item'; }
+
+      static get properties() {
+        return {
+          docsDb: {
+            type: PouchDB,
+            value: new PouchDB('activity_document')
+          },
+          activity: String,
+          creator: String,
+          shouldRenderTrueIcon: {
+            type: Boolean,
+            value: false,
+            readOnly: true
+          },
+          shouldRenderFalseIcon: {
+            type: Boolean,
+            value: false,
+            readOnly: true
+          },
+          busy: {
+            type: Boolean,
+            value: false
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_checkDocumentExist(activity, creator)'
+        ];
+      }
+
+      _checkDocumentExist(activity, creator) {
+        let startKey = ['document', activity, creator].join('_');
+        let endKey = startKey + '\uf000';
+        this.docsDb.allDocs({
+          startkey: startKey,
+          endkey: endKey
+        }).then((result) => {
+          if (result.rows.length > 0) this.setProperties({
+            shouldRenderTrueIcon: true,
+            shouldRenderFalseIcon: false
+          }, true);
+          else this.setProperties({
+            shouldRenderTrueIcon: false,
+            shouldRenderFalseIcon: true
+          }, true);
+        });
+      }
+
+      _refresh() {
+        let activity = this.get('activity');
+        let creator = this.get('creator');
+        let remote = new PouchDB('https://fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com/activity_document', {
+          ajax: { headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" } }
+        });
+        this.set('busy', true);
+        PouchDB.replicate(remote, this.docsDb, {
+          checkpoint: false,
+          filter: 'document/parent',
+          query_params: { parent: activity }
+        }).then((info) => {
+          this._checkDocumentExist(activity, creator);
+          this.set('busy', false);
+        });
+      }
+
+      _computeCheckedIcon(busy) {
+        return busy ? 'sync' : 'done';
+      }
+
+      _computeCrossedIcon(busy) {
+        return busy ? 'sync' : 'clear';
+      }
+
+    }
+
+    window.customElements.define(FTSDashboardItem.is, FTSDashboardItem);
+  </script>
+</dom-module>

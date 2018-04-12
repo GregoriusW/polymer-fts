@@ -1,0 +1,89 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout.html">
+<link rel="import" href="../bower_components/paper-item/paper-item-behavior.html">
+<link rel="import" href="../bower_components/paper-item/paper-item-shared-styles.html">
+<link rel="import" href="../bower_components/iron-image/iron-image.html">
+
+<dom-module id="fts-person-item">
+  <template>
+    <style include="paper-item-shared-styles"></style>
+    <style>
+       :host {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+
+        @apply --paper-font-menu;
+
+        @apply --paper-item;
+        @apply --paper-icon-item;
+      }
+
+      .content-icon {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+
+        width: var(--paper-item-icon-width, 56px);
+        @apply --paper-item-icon;
+      }
+
+      iron-image {
+        background-color: var(--paper-grey-700);
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+      }
+    </style>
+
+    <template is="dom-if" if="[[!light]]">
+      <div id="contentIcon" class="content-icon">
+        <iron-image preload fade sizing="contain" src="[[_computePhotoURL(personData.photoURL)]]"></iron-image>
+      </div>
+    </template>
+    [[_computeFullName(personData.firstName, personData.lastName)]]
+  </template>
+  <script>
+    class FTSPersonItem extends Polymer.Element {
+
+      static get is() { return 'fts-person-item'; }
+
+      static get properties() {
+        return {
+          key: {
+            type: String,
+            observer: '_keyChanged'
+          },
+          personData: {
+            type: Object,
+            readOnly: true
+          },
+          light: {
+            type: Boolean,
+            value: false
+          }
+        };
+      }
+
+      static get behaviors() {
+        return [
+          Polymer.PaperItemBehavior
+        ];
+      }
+
+      _keyChanged(key) {
+        let db = new PouchDB('people');
+        db.get(key).then((doc) => this._setPersonData(doc));
+      }
+
+      _computePhotoURL(url) {
+        return url ? url : Polymer.rootPath + 'images/default.jpg';
+      }
+
+      _computeFullName(first, last) {
+        return last ? first + ' ' + last : first;
+      }
+
+    }
+
+    window.customElements.define(FTSPersonItem.is, FTSPersonItem);
+  </script>
+</dom-module>

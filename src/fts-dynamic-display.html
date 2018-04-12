@@ -1,0 +1,198 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-icon/iron-icon.html">
+<link rel="import" href="../bower_components/juicy-html/juicy-html.html">
+<link rel="import" href="fts-icons.html">
+
+<dom-module id="fts-dynamic-display">
+  <template>
+    <style>
+       :host {
+        @apply --paper-font-body1;
+      }
+
+      hr {
+        display: block;
+        height: 1px;
+        border: 0;
+        border-top: 1px solid #ccc;
+        margin: 1em 0;
+        padding: 0;
+      }
+
+      h2 {
+        @apply --paper-font-subhead;
+
+      }
+
+      label {
+        @apply --paper-font-body2;
+        display: block;
+        font-weight: 700;
+      }
+
+      p {
+        margin: 0;
+      }
+
+      a.attachment {
+        @apply --paper-font-body2;
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        color: var(--primary-color);
+        text-decoration: none;
+      }
+
+      a iron-icon:first-child {
+        --iron-icon-width: 32px;
+        --iron-icon-height: 32px;
+        padding-right: 4px;
+      }
+
+      a iron-icon:last-child {
+        --iron-icon-width: 1em;
+        --iron-icon-height: 1em;
+        padding-left: 4px;
+      }
+    </style>
+
+    <template is="dom-if" if="[[_shouldRenderHorizontalLine]]">
+      <hr>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderSubheader]]">
+      <h2>[[field.label]]</h2>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderStatement]]">
+      <p>[[field.label]]</p>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderTextShort]]">
+      <label>[[field.label]]</label> [[_computeDisplayedValue(fieldValue)]]
+    </template>
+    <template is="dom-if" if="[[_shouldRenderTextLong]]">
+      <label>[[field.label]]</label>
+      <p inner-h-t-m-l="[[_computeHTML(fieldValue)]]"></p>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderDate]]">
+      <label>[[field.label]]</label> [[_computeDateDisplay(fieldValue)]]
+    </template>
+    <template is="dom-if" if="[[_shouldRenderNumber]]">
+      <label>[[field.label]]</label> [[_computeDisplayedValue(fieldValue)]]
+    </template>
+    <template is="dom-if" if="[[_shouldRenderAttachment]]">
+      <a class="attachment" href$="[[fieldValue]]" target="_blank">
+        <iron-icon icon="insert-drive-file"></iron-icon>
+        [[field.label]]
+        <iron-icon icon="open-in-new"></iron-icon>
+      </a>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderTextRich]]">
+      <label>[[field.label]]</label> <juicy-html html="[[_computeDisplayedValue(fieldValue)]]"></juicy-html>
+    </template>
+  </template>
+  <script>
+    class FTSDynamicDisplay extends Polymer.Element {
+
+      static get is() { return 'fts-dynamic-display'; }
+
+      static get properties() {
+        return {
+          field: Object,
+          fieldValue: String,
+          _shouldRenderHorizontalLine: {
+            computed: '_computeShouldRenderHorizontalLine(field.fieldType)'
+          },
+          _shouldRenderSubheader: {
+            computed: '_computeShouldRenderSubheader(field.fieldType)'
+          },
+          _shouldRenderStatement: {
+            computed: '_computeShouldRenderStatement(field.fieldType)'
+          },
+          _shouldRenderTextShort: {
+            computed: '_computeShouldRenderTextShort(field.fieldType, fieldValue)'
+          },
+          _shouldRenderTextLong: {
+            computed: '_computeShouldRenderTextLong(field.fieldType, fieldValue)'
+          },
+          _shouldRenderTextRich: {
+            computed: '_computeShouldRenderTextRich(field.fieldType, fieldValue)'
+          },
+          _shouldRenderEmail: {
+            computed: '_computeShouldRenderEmail(field.fieldType)'
+          },
+          _shouldRenderScale: {
+            computed: '_computeShouldRenderScale(field.fieldType)'
+          },
+          _shouldRenderNumber: {
+            computed: '_computeShouldRenderNumber(field.fieldType)'
+          },
+          _shouldRenderAttachment: {
+            computed: '_computeShouldRenderAttachment(field.fieldType, fieldValue)'
+          },
+          _shouldRenderDate: {
+            computed: '_computeShouldRenderDate(field.fieldType)'
+          }
+        };
+      }
+
+      _computeShouldRenderHorizontalLine(type) {
+        return type === 'horizontal-line';
+      }
+
+      _computeShouldRenderSubheader(type) {
+        return type === 'subheader';
+      }
+
+      _computeShouldRenderStatement(type) {
+        return type === 'statement';
+      }
+
+      _computeShouldRenderTextShort(type, value) {
+        return type === 'text-short' && value !== '\0';
+      }
+
+      _computeShouldRenderTextLong(type, value) {
+        return type === 'text-long' && value !== '\0';
+      }
+
+      _computeShouldRenderTextRich(type) {
+        return type === 'text-rich';
+      }
+
+      _computeShouldRenderEmail(type) {
+        return type === 'email';
+      }
+
+      _computeShouldRenderScale(type) {
+        return type === 'scale';
+      }
+
+      _computeShouldRenderNumber(type) {
+        return type === 'number';
+      }
+
+      _computeShouldRenderAttachment(type, value) {
+        return type === 'file-upload' && value !== '\0';
+      }
+
+      _computeShouldRenderDate(type) {
+        return type === 'date';
+      }
+
+      _computeHTML(value) {
+        let source = value.split(/\r\n|\r|\n/);
+        return source.join('<br>');
+      }
+
+      _computeDateDisplay(ms) {
+        let options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+        return new Date(ms).toLocaleDateString({}, options);
+      }
+
+      _computeDisplayedValue(value) {
+        return value ? value : '-empty-'
+      }
+
+    }
+
+    window.customElements.define(FTSDynamicDisplay.is, FTSDynamicDisplay);
+  </script>
+</dom-module>

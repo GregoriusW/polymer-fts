@@ -1,0 +1,153 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../bower_components/paper-icon-button/paper-icon-button.html">
+<link rel="import" href="fts-styles.html">
+<link rel="import" href="fts-dynamic-display.html">
+
+<dom-module id="fts-document-item">
+  <template>
+    <style include="fts-styles">
+      .card {
+        margin-bottom: 24px;
+      }
+
+      .header {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+        padding-right: 8px;
+      }
+
+      .header>iron-image {
+        background-color: var(--primary-color);
+        width: 48px;
+        height: 48px;
+      }
+
+      .header>.detail {
+        @apply --paper-font-body2;
+        @apply --layout-vertical;
+        @apply --layout-flex;
+        padding-left: 12px;
+      }
+
+      .detail span {
+        @apply --paper-font-caption;
+        color: var(--secondary-text-color);
+      }
+
+      .content {
+        @apply --paper-font-body1;
+        padding: 8px 16px;
+      }
+
+      .delete {
+        color: var(--paper-red-500);
+      }
+    </style>
+
+    <div class="card">
+      <div class="header">
+        <iron-image preload fade src="[[_computeProfilePictureURL(creator.photoURL)]]" sizing="cover" position="center"></iron-image>
+        <div class="detail">
+          [[_computeFullName(creator.firstName, creator.lastName)]]
+          <span>[[_computeTimestamp(documentData.created)]]</span>
+        </div>
+        <template is="dom-if" if="[[shouldRenderFacultyOnlyFeature]]">
+          <paper-icon-button class="delete" icon="delete-forever" on-tap="_remove"></paper-icon-button>
+        </template>
+      </div>
+      <div class="content">
+        <template is="dom-repeat" items="[[formData.fields]]">
+          <fts-dynamic-display field="[[item]]" field-value="[[_computeValue(documentData.values, index)]]"></fts-dynamic-display>
+        </template>
+      </div>
+    </div>
+  </template>
+  <script>
+    class FTSDocumentItem extends Polymer.Element {
+
+      static get is() { return 'fts-document-item'; }
+
+      static get properties() {
+        return {
+          localDb: {
+            type: PouchDB,
+            value: new PouchDB('activity_document')
+          },
+          documentId: {
+            type: String,
+            observer: '_documentIdChanged'
+          },
+          documentData: Object,
+          formId: {
+            type: String,
+            observer: '_formIdChanged'
+          },
+          formData: {
+            type: Object,
+            readOnly: true
+          },
+          creator: {
+            type: Object,
+            readOnly: true
+          },
+          shouldRenderFacultyOnlyFeature: {
+            type: Boolean,
+            value: false
+          }
+        };
+      }
+
+      _documentIdChanged(id) {
+        this.localDb.get(id).then((doc) => {
+          this.set('documentData', doc);
+          this._computeFormId(doc.parent);
+          this._computeCreator(doc.creator);
+        }).catch((error) => console.log(error));
+      }
+
+      _computeCreator(id) {
+        let db = new PouchDB('people');
+        db.get(id).then((doc) => this._setCreator(doc));
+      }
+
+      _computeFormId(id) {
+        let db = new PouchDB('activity');
+        db.get(id).then((doc) => this.set('formId', doc.form));
+      }
+
+      _formIdChanged(id) {
+        let db = new PouchDB('form');
+        db.get(id).then((doc) => this._setFormData(doc)).catch((error) => console.log(error));
+      }
+
+      _computeValue(values, idx) {
+        return values[idx];
+      }
+
+      _computeFullName(first, last) {
+        return last ? first + ' ' + last : first;
+      }
+
+      _computeTimestamp(ms) {
+        let options = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+        return new Date(ms).toLocaleDateString({}, options);
+      }
+
+      _computeProfilePictureURL(url) {
+        return url ? url : Polymer.rootPath + 'images/default.jpg';
+      }
+
+      _remove() {
+        let _continue = confirm('Remove document?');
+        if (_continue) {
+          this.set('documentData._deleted', true);
+          this.localDb.put(this.get('documentData'));
+        }
+      }
+
+    }
+
+    window.customElements.define(FTSDocumentItem.is, FTSDocumentItem);
+  </script>
+</dom-module>

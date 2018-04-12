@@ -1,0 +1,274 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-input/paper-textarea.html">
+<link rel="import" href="../bower_components/paper-slider/paper-slider.html">
+<link rel="import" href="../bower_components/wysiwyg-e/wysiwyg-e.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/bold.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/italic.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/underline.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/color.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/clear.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/link.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/ordered.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/unordered.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/indent.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/outdent.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/justify.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/heading.html">
+<link rel="import" href="../bower_components/wysiwyg-e/tools/blockquote.html">
+
+
+
+<dom-module id="fts-dynamic-field">
+  <template>
+    <style>
+      paper-input,
+      paper-textarea {
+        --paper-input-container-input: {
+          @apply --paper-font-code1;
+        }
+      }
+
+      label {
+        @apply --paper-font-body2;
+        padding-top: 8px;
+      }
+
+      label+* {
+        display: block;
+      }
+
+      h2 {
+        @apply --paper-font-title;
+        color: var(--primary-text-color);
+        margin-bottom: 0;
+      }
+
+      hr {
+        border: 1px solid var(--divider-color);
+        margin: 1em 0;
+      }
+    </style>
+
+    <template is="dom-if" if="[[_shouldRenderHorizontalLine]]" restamp>
+      <hr>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderSubheader]]" restamp>
+      <h2>[[label]]</h2>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderStatement]]" restamp>
+      <p>[[label]]</p>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderTextShort]]" restamp>
+      <label>[[label]]</label>
+      <paper-input no-label-float id="short" type="text" value="{{fieldValue}}"></paper-input>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderTextLong]]" restamp>
+      <label>[[label]]</label>
+      <paper-textarea no-label-float id="long" type="text" value="{{fieldValue}}"></paper-textarea>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderTextRich]]" restamp>
+      <label>[[label]]</label>
+      <!-- <paper-textarea no-label-float id="rich" type="text"></paper-textarea> -->
+      <wysiwyg-e style="width: 100vw; height: 100vh;" id="rich">
+        <wysiwyg-tool-bold></wysiwyg-tool-bold>
+        <wysiwyg-tool-italic></wysiwyg-tool-italic>
+        <wysiwyg-tool-underline></wysiwyg-tool-underline>
+        <wysiwyg-tool-color></wysiwyg-tool-color>
+        <wysiwyg-tool-clear></wysiwyg-tool-clear>
+        <wysiwyg-tool-link></wysiwyg-tool-link>
+        <wysiwyg-tool-ordered></wysiwyg-tool-ordered>
+        <wysiwyg-tool-unordered></wysiwyg-tool-unordered>
+        <wysiwyg-tool-indent></wysiwyg-tool-indent>
+        <wysiwyg-tool-outdent></wysiwyg-tool-outdent>
+        <wysiwyg-tool-justify right="" center="" full=""></wysiwyg-tool-justify>
+        <wysiwyg-tool-heading h1="" h2="" h3="" h4="" h5="" h6=""></wysiwyg-tool-heading>
+        <wysiwyg-tool-blockquote></wysiwyg-tool-blockquote>
+      </wysiwyg-e>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderDate]]" restamp>
+      <label>[[label]]</label>
+      <paper-input no-label-float id="date" type="date" value="{{fieldValue}}"></paper-input>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderNumber]]" restamp>
+      <label>[[label]]</label>
+      <paper-input no-label-float id="number" type="number" value="{{fieldValue}}"></paper-input>
+    </template>
+    <template is="dom-if" if="[[_shouldRenderFileUpload]]" restamp>
+      <label for="file-upload">[[label]]</label>
+      <input type="file" id="file-upload">
+    </template>
+    <template is="dom-if" if="[[_shouldRenderScale]]" restamp>
+      <label>[[label]]</label>
+      <paper-slider id="scale" min="[[min]]" max="[[max]]" value="{{fieldValue}}" pin></paper-slider>
+    </template>
+  </template>
+  <script>
+    class FTSDynamicField extends Polymer.Element {
+
+      static get is() { return 'fts-dynamic-field'; }
+
+      static get properties() {
+        return {
+          label: String,
+          fieldType: String,
+          min: {
+            type: Number,
+            value: 0
+          },
+          max: {
+            type: Number,
+            value: 10
+          },
+          _shouldRenderHorizontalLine: {
+            computed: '_computeShouldRenderHorizontalLine(fieldType)'
+          },
+          _shouldRenderSubheader: {
+            computed: '_computeShouldRenderSubheader(fieldType)'
+          },
+          _shouldRenderStatement: {
+            computed: '_computeShouldRenderStatement(fieldType)'
+          },
+          _shouldRenderTextShort: {
+            computed: '_computeShouldRenderTextShort(fieldType)'
+          },
+          _shouldRenderTextLong: {
+            computed: '_computeShouldRenderTextLong(fieldType)'
+          },
+          _shouldRenderTextRich: {
+            computed: '_computeShouldRenderTextRich(fieldType)'
+          },
+          _shouldRenderEmail: {
+            computed: '_computeShouldRenderEmail(fieldType)'
+          },
+          _shouldRenderScale: {
+            computed: '_computeShouldRenderScale(fieldType)'
+          },
+          _shouldRenderNumber: {
+            computed: '_computeShouldRenderNumber(fieldType)'
+          },
+          _shouldRenderFileUpload: {
+            computed: '_computeShouldRenderFileUpload(fieldType)'
+          },
+          _shouldRenderDate: {
+            computed: '_computeShouldRenderDate(fieldType)'
+          }
+        };
+      }
+
+      _computeShouldRenderHorizontalLine(type) {
+        return type === 'horizontal-line';
+      }
+
+      _computeShouldRenderSubheader(type) {
+        return type === 'subheader';
+      }
+
+      _computeShouldRenderStatement(type) {
+        return type === 'statement';
+      }
+
+      _computeShouldRenderTextShort(type) {
+        return type === 'text-short';
+      }
+
+      _computeShouldRenderTextLong(type) {
+        return type === 'text-long';
+      }
+
+      _computeShouldRenderTextRich(type) {
+        return type === 'text-rich';
+      }
+
+      _computeShouldRenderEmail(type) {
+        return type === 'email';
+      }
+
+      _computeShouldRenderScale(type) {
+        return type === 'scale';
+      }
+
+      _computeShouldRenderNumber(type) {
+        return type === 'number';
+      }
+
+      _computeShouldRenderFileUpload(type) {
+        return type === 'file-upload';
+      }
+
+      _computeShouldRenderDate(type) {
+        return type === 'date';
+      }
+
+      getValue() {
+        let elem;
+        switch (this.fieldType) {
+          case 'text-short':
+            elem = this.shadowRoot.querySelector('#short');
+            return elem.value ? elem.value : '\0';
+          case 'text-long':
+            elem = this.shadowRoot.querySelector('#long');
+            return elem.value ? elem.value : '\0';
+          case 'text-rich':
+            elem = this.shadowRoot.querySelector('#rich');
+            return elem.value ? elem.value : '\0';
+          case 'email':
+            elem = this.shadowRoot.querySelector('#email');
+            return elem.value ? elem.value : '\0';
+          case 'scale':
+            elem = this.shadowRoot.querySelector('#scale');
+            return elem.value ? elem.value : '\0';
+          case 'number':
+            elem = this.shadowRoot.querySelector('#number');
+            return elem.value ? elem.value : '\0';
+          case 'file-upload':
+            elem = this.shadowRoot.querySelector('#file-upload');
+            return elem.files.length > 0 ? elem.files : '\0';
+          case 'date':
+            elem = this.shadowRoot.querySelector('#date');
+            return elem.value ? elem.value : '\0';
+          case 'scale':
+            elem = this.shadowRoot.querySelector('#scale');
+            return elem.value ? elem.value : '\0';
+          default:
+            return '\0';
+        }
+      }
+
+      reset() {
+        switch (this.fieldType) {
+          case 'text-short':
+            this.shadowRoot.querySelector('#short').value = null;
+            break;
+          case 'text-long':
+            this.shadowRoot.querySelector('#long').value = null;
+            break;
+          case 'text-rich':
+            this.shadowRoot.querySelector('#rich').value = null;
+            break;
+          case 'email':
+            this.shadowRoot.querySelector('#email').value = null;
+            break;
+          case 'scale':
+            this.shadowRoot.querySelector('#scale').value = null;
+            break;
+          case 'number':
+            this.shadowRoot.querySelector('#number').value = null;
+            break;
+          case 'file-upload':
+            this.shadowRoot.querySelector('#file-upload').files = null;
+            break;
+          case 'date':
+            this.shadowRoot.querySelector('#date').value = null;
+            break;
+          default:
+            console.log('Field cannot be cleared.')
+            break;;
+        }
+      }
+
+    }
+
+    window.customElements.define(FTSDynamicField.is, FTSDynamicField);
+  </script>
+</dom-module>

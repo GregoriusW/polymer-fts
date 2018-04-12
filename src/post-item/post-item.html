@@ -1,0 +1,154 @@
+<link rel="import" href="../../bower_components/iron-image/iron-image.html">
+<link rel="import" href="../../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../comment-item/comment-item.html">
+
+<dom-module id="post-item">
+  <template strip-whitespace>
+    <style>
+      :host {
+        @apply --layout-vertical;
+      }
+
+      :host ::slotted(*) {
+        background-color: var(--paper-grey-200);
+      }
+
+      .header {
+        @apply --layout-horizontal;
+        @apply --layout-center;
+      }
+
+      .header>iron-image {
+        background-color: var(--secondary-color);
+        height: 48px;
+        width: 48px;
+      }
+
+      .header>.detail {
+        @apply --paper-font-body2;
+        @apply --layout-vertical;
+        @apply --layout-flex;
+
+        padding-left: 12px;
+      }
+
+      .detail span {
+        @apply --paper-font-caption;
+
+        color: var(--secondary-text-color);
+      }
+
+      .content {
+        @apply --paper-font-body1;
+
+        padding: 8px 16px;
+      }
+      
+      .footer {
+        border-top: 1px solid var(--divider-color);
+      }
+
+      comment-item {
+        border-bottom: 1px solid var(--divider-color);
+        margin-bottom: 4px;
+      }
+
+      comment-item:last-of-type {
+        border-bottom: none;
+      }
+    </style>
+
+    <div class="header">
+      <iron-image preload fade src="[[_computeImageURL(creatorData.photoURL)]]" sizing="cover" position="center"></iron-image>
+      <div class="detail">
+        [[_computeFullName(creatorData.firstName, creatorData.lastName)]]
+        <span>[[_computeCreated(data.timestamp)]]</span>
+      </div>
+    </div>
+    <div class="content">[[data.content]]</div>
+    <div class="footer">
+      <slot></slot>
+      <template is="dom-repeat" items="[[commentList]]" as="comment">
+        <comment-item data="[[comment.doc]]"></comment-item>
+      </template>
+    </div>
+  </template>
+  <script>
+    class PostItem extends Polymer.Element {
+
+      static get is() { return 'post-item'; }
+
+      static get properties() {
+        return {
+          key: {
+            type: Object,
+            observer: '_keyChanged'
+          },
+          data: {
+            type: Object,
+            observer: '_dataChanged'
+          },
+          creatorData: {
+            type: Object,
+            readOnly: true
+          },
+          commentList: {
+            type: Array,
+            value: () => []
+          },
+          db: {
+            type: PouchDB,
+            value: new PouchDB('post')
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_postCreatorChanged(data.creator)'
+        ];
+      }
+
+      _keyChanged(key) {
+        if (Boolean(key))
+          this.db.get(key).then((doc) => this.set('data', doc), (error) => console.error(error.message));
+      }
+
+      _dataChanged(post) {
+        if (Boolean(post)) this._initCommentList(post._id);
+      }
+
+      _postCreatorChanged(creator) {
+        let db = new PouchDB('people');
+        db.get(creator).then((doc) => this._setCreatorData(doc), (error) => console.error(error.message));
+      }
+
+      _computeFullName(first, last) {
+        return Boolean(last) ? first + ' ' + last : first;
+      }
+
+      _computeCreated(ms) {
+        let opt = { day: 'numeric', month: 'short' };
+        return new Date(ms).toLocaleDateString({}, opt);
+      }
+
+      _computeImageURL(url) {
+        return Boolean(url) ? url : Polymer.rootPath + 'images/default.jpg';
+      }
+
+      _initCommentList(key) {
+        let db = new PouchDB('comment');
+        db.allDocs({
+          descending: true,
+          include_docs: true,
+          limit: 3,
+          startkey: 'comment_' + key + '\ufff0',
+          endkey: 'comment_' + key
+        }).then((result) => this.set('commentList', result.rows), (error) => console.error(error.message));
+      }
+
+    }
+
+    window.customElements.define(PostItem.is, PostItem);
+  </script>
+</dom-module>

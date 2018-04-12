@@ -1,0 +1,399 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="fts-styles.html">
+<link rel="import" href="fts-person-item.html">
+<link rel="import" href="fts-document-item.html">
+<link rel="import" href="fts-activity-form.html">
+
+<dom-module id="fts-activity">
+  <template>
+    <style include="fts-styles">
+      .content {
+        @apply --layout;
+        @apply --layout-center-justified;
+        margin: 24px;
+      }
+
+      main {
+        @apply --layout-flex;
+        @apply --layout-vertical;
+        max-width: 800px;
+        overflow: hidden;
+      }
+
+      main>.card,
+      aside>.card {
+        margin-bottom: 24px;
+      }
+
+      aside>* {
+        margin-right: 24px;
+        width: 240px;
+      }
+
+      .card>paper-listbox {
+        padding-top: 0;
+      }
+
+      .card-header,
+      .card-content {
+        padding: 16px;
+      }
+
+      .card-header {
+        @apply --paper-font-title;
+      }
+
+      h2 {
+        @apply --paper-font-headline;
+        margin: 0;
+      }
+
+      h2>span {
+        @apply --paper-font-subhead;
+        color: var(--secondary-text-color);
+      }
+
+      h2>span::before {
+        content: "\00A0";
+      }
+
+      paper-button.card {
+        @apply --layout-self-center;
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+      fts-person-item.iron-selected {
+        --paper-item-selected: {
+          background-color: var(--accent-color);
+        }
+      }
+    </style>
+
+    <app-route route="[[route]]" pattern="/:id" data="{{routeData}}"></app-route>
+
+    <template is="dom-if" if="[[_shouldRenderForm]]">
+      <fts-activity-form parent="[[routeData.id]]"></fts-activity-form>
+    </template>
+    <div class="content">
+      <template is="dom-if" if="[[activityData.private]]">
+        <aside>
+          <template is="dom-if" if="[[shouldRenderParticipantList]]">
+            <div class="card">
+              <div class="card-header">
+                Participants
+              </div>
+              <paper-listbox selected="{{selectedPerson}}" attr-for-selected="key">
+                <template is="dom-repeat" items="[[projectData.participants]]">
+                  <fts-person-item key="[[item]]"></fts-person-item>
+                </template>
+              </paper-listbox>
+            </div>
+          </template>
+          <template is="dom-if" if="[[!shouldRenderParticipantList]]">
+            <div class="card">
+              <div class="card-header">
+                Created By
+              </div>
+              <paper-listbox selected="{{selectedPerson}}" attr-for-selected="key">
+                <fts-person-item key="[[_computeCurrentUserKey(user.email)]]"></fts-person-item>
+                <template is="dom-repeat" items="[[groupData.members]]">
+                  <fts-person-item key="[[item]]"></fts-person-item>
+                </template>
+              </paper-listbox>
+            </div>
+          </template>
+        </aside>
+      </template>
+      <main>
+        <div class="card">
+          <div class="card-content">
+            <h2>[[currentStage]]<span>[[activityData.name]]</span></h2>
+          </div>
+        </div>
+        <template is="dom-if" if="[[hasNewDocument]]">
+          <paper-button class="card" on-tap="_refreshDocuments">
+            <iron-icon icon="refresh"></iron-icon>
+            Refresh documents
+          </paper-button>
+        </template>
+        <template is="dom-repeat" items="[[documents]]" as="document">
+          <fts-document-item document-id="[[document.id]]" should-render-faculty-only-feature="[[shouldRenderFacultyOnlyFeature]]"></fts-document-item>
+        </template>
+      </main>
+    </div>
+  </template>
+  <script>
+    class FTSActivity extends Polymer.Element {
+
+      static get is() { return 'fts-activity'; }
+
+      static get properties() {
+        return {
+          user: Object,
+          route: Object,
+          routeData: Object,
+          localDocDb: {
+            type: PouchDB,
+            value: new PouchDB('activity_document')
+          },
+          activityData: {
+            type: Object,
+            readOnly: true
+          },
+          projectData: {
+            type: Object,
+            readOnly: true
+          },
+          groupData: {
+            type: Object,
+            readOnly: true
+          },
+          shouldRenderParticipantList: {
+            type: Boolean,
+            value: false,
+            readOnly: true
+          },
+          _shouldRenderForm: {
+            computed: '_computeShouldRenderForm(activityData.writable, projectData.faculty_members)'
+          },
+          shouldRenderFacultyOnlyFeature: {
+            type: Boolean,
+            value: false,
+            readOnly: true
+          },
+          selectedPerson: {
+            type: String,
+            observer: '_fetchUserDocuments'
+          },
+          documents: {
+            type: Array,
+            readOnly: true,
+            value: []
+          },
+          hasNewDocument: {
+            type: Boolean,
+            value: false,
+            readOnly: true
+          },
+          syncTask: {
+            type: Object,
+            readOnly: true
+          }
+        };
+      }
+
+      static get observers() {
+        return [
+          '_routeIdChanged(routeData.id)'
+        ];
+      }
+
+      ready() {
+        super.ready();
+        this.removeAttribute('unresolved');
+        Polymer.RenderStatus.afterNextRender(this, function () {
+          this.addEventListener('submit-activity', (e) => this._onSubmitActivity(e));
+        });
+      }
+
+      _routeIdChanged(id) {
+        if (id.startsWith('activity_')) {
+          this._setShouldRenderParticipantList(false);
+          this._setGroupData(undefined);
+          this.set('selectedPerson', undefined);
+          let stageNum = id.substr(-3, 1);
+          let projectId = id.startsWith('activity_') ? id.substr(9, 33) : null;
+          if (projectId) {
+            let db = new PouchDB('project');
+            let aclKey = ['acl', projectId, 'user', this.get('user.email')].join('_');
+            this._computeShouldRenderTeamMemberList(aclKey);
+            db.get(projectId).then(data => {
+              this._computeShouldRenderFacultyOnlyFeature(data.faculty_members);
+              this._computeShouldRenderParticipantList(data);
+              this._computeStageName(data, stageNum);
+              this._setProjectData(data);
+            });
+          }
+          let db = new PouchDB('activity');
+          db.get(id).then(data => this._setActivityData(data));
+          let remoteDocDb = this._computeRemoteDb('activity_document');
+          PouchDB.replicate(remoteDocDb, this.localDocDb, {
+            checkpoint: false,
+            filter: 'document/parent',
+            query_params: { parent: id }
+          }).then((info) => this.__fireEvent('notify-user', { message: 'Document replication completed.' })).finally(() => {
+            this._fetchDocuments();
+            this._initSyncTasks();
+          });
+        }
+      }
+
+      _fetchDocuments() {
+        this._setDocuments([]);
+        let privateActivity = this.get('activityData.private');
+        if (!privateActivity) {
+          let start = ['document', this.get('routeData.id')].join('_');
+          let end = start + '\ufff0';
+          this.localDocDb.allDocs({
+            include_docs: true,
+            startkey: start,
+            endkey: end
+          }).then((result) => this._setDocuments(result.rows));
+        }
+      }
+
+      _fetchUserDocuments(id) {
+        this._setDocuments([]);
+        let lowKey = ['document', this.get('routeData.id'), id].join('_');
+        let highKey = lowKey + '\ufff0';
+        this.localDocDb.allDocs({
+          include_docs: true,
+          startkey: lowKey,
+          endkey: highKey
+        }).then((result) => this._setDocuments(result.rows));
+      }
+
+      _refreshDocuments() {
+        let selectedPerson = this.get('selectedPerson');
+        if (selectedPerson) this._fetchUserDocuments(selectedPerson);
+        else this._fetchDocuments();
+        this._setHasNewDocument(false);
+      }
+
+      _computeShouldRenderParticipantList(project) {
+        let uid = 'user_' + this.get('user.email');
+        let faculties = project.faculty_members;
+        this._setShouldRenderParticipantList(faculties.includes(uid));
+      }
+
+      _computeShouldRenderTeamMemberList(key) {
+        let db = new PouchDB('acl');
+        db.get(key).then((data) => this._setGroupData(data)).catch(() => this._setGroupData(undefined));
+      }
+
+      _computeStageName(project, index) {
+        let raw;
+        switch (index) {
+          case '1':
+            raw = project.stage_1;
+            break;
+          case '2':
+            raw = project.stage_2;
+            break;
+          case '3':
+            raw = project.stage_3;
+            break;
+          default:
+            raw = project.stage_4;
+            break;
+        }
+        let split = raw.split('|');
+        this.setProperties({
+          currentStage: split[0],
+          currentDescription: split[split.length - 1]
+        }, true);
+      }
+
+      _computeRemoteDb(dbname) {
+        let path = ['https:/', 'fc32b7b4-6a79-4ed0-9310-259e569874db-bluemix.cloudant.com', dbname].join('/');
+        let opt = { ajax: { headers: { "Authorization": "Basic ZmMzMmI3YjQtNmE3OS00ZWQwLTkzMTAtMjU5ZTU2OTg3NGRiLWJsdWVtaXg6ZDY4MWRiZDI2YTMxNzMwNDI3ZDhjODE0N2UyZDU5ZDY1OTc1YzliMzI5MmQzODM5ZDcyMmU1NzIwZGViMTM4Ng==" } } };
+        return new PouchDB(path, opt);
+      }
+
+      _computeShouldRenderForm(writable, faculties) {
+        let uid = 'user_' + this.get('user.email');
+        let faculty = faculties.includes(uid);
+        return writable || faculty;
+      }
+
+      _computeShouldRenderFacultyOnlyFeature(faculties) {
+        let email = this.get('user.email');
+        let uid = this._computeCurrentUserKey(email);
+        this._setShouldRenderFacultyOnlyFeature(faculties.includes(uid));
+      }
+
+      _computeCurrentUserKey(email) {
+        return 'user_' + email;
+      }
+
+      _onSubmitActivity(e) {
+        this.localDocDb.put(e.detail).then((response) => {
+          let form = this.shadowRoot.querySelector('fts-activity-form');
+          form._closeForm();
+        });
+      }
+
+      _initSyncTasks() {
+        let id = this.get('routeData.id');
+        let remote = this._computeRemoteDb('activity_document');
+        let sync = PouchDB.sync(this.localDocDb, remote, {
+          checkpoint: false,
+          live: true,
+          retry: true,
+          filter: 'document/parent',
+          query_params: { parent: id }
+        }).on('change', (info) => {
+          if (info.change.docs_written > 0) {
+            this._setHasNewDocument(true);
+            this.__fireEvent('notify-user', { message: 'New document retrieved.' });
+          }
+        }).on('complete', (info) => {
+          if (info.change.docs_written > 0) {
+            this._setHasNewDocument(true);
+            this.__fireEvent('notify-user', { message: 'New document retrieved.' });
+          }
+        });
+        this._setSyncTask(sync);
+      }
+
+      _cancelSyncTasks() {
+        this.get('syncTask').cancel();
+        this.__fireEvent('notify-user', { message: 'Synchronization task cancelled.' });
+      }
+
+      __fireEvent(name, data) {
+        let event = new CustomEvent(name, {
+          bubbles: true,
+          composed: true,
+          detail: data
+        });
+        this.dispatchEvent(event);
+      }
+
+      _convertToCSV(event) {
+        let anchor = event.currentTarget;
+        let arr = this.get('documents');
+        if (arr.length > 0) {
+          // get the docs
+          let docs = [];
+          arr.forEach((item) => docs.push(item.doc));
+          // handle 'null' value
+          let replacer = (key, value) => value === null ? '' : value;
+          let header = Object.keys(docs[0]);
+          let csv = docs.map((row) => header.map((fieldName) => JSON.stringify(row[fieldName], replacer)).join(','));
+          csv.unshift(header.join(','));
+          csv = csv.join('\r\n');
+          let blob = new Blob([csv], { type: 'text/csv' });
+          let blobURL = URL.createObjectURL(blob);
+          anchor.target = '_blank';
+          anchor.href = blobURL;
+          anchor.download = 'DownloadResult.csv';
+          /* window.open("data:text/csv;charset=utf-8," + csv); */
+        } else {
+          let e = new CustomEvent('notify-user', {
+            bubbles: true,
+            composed: true,
+            detail: { message: 'No documents to export.' }
+          });
+          this.dispatchEvent(e);
+        }
+      }
+
+    }
+
+    window.customElements.define(FTSActivity.is, FTSActivity);
+  </script>
+</dom-module>

@@ -1,0 +1,43 @@
+{
+  "entrypoint": "index.html",
+  "shell": "src/fts-app.html",
+  "fragments": [
+    "src/fts-404.html",
+    "src/fts-activity-form.html",
+    "src/fts-activity.html",
+    "src/fts-class-item.html",
+    "src/fts-class.html",
+    "src/fts-comment-form.html",
+    "src/fts-comment-item.html",
+    "src/fts-document-item.html",
+    "src/fts-dynamic-display.html",
+    "src/fts-dynamic-field.html",
+    "src/fts-home.html",
+    "src/fts-icons.html",
+    "src/fts-login.html",
+    "src/fts-post-form.html",
+    "src/fts-post-item.html",
+    "src/fts-post.html",
+    "src/fts-profile.html",
+    "src/fts-stage-list.html",
+    "src/fts-styles.html"
+  ],
+  "sources": [
+    "src/**/*",
+    "images/**/*"
+  ],
+  "extraDependencies": [
+    "manifest.json",
+    "bower_components/webcomponentsjs/*.js"
+  ],
+  "lint": {
+    "rules": [
+      "polymer-2"
+    ]
+  },
+  "builds": [
+    {
+      "preset": "es6-unbundled"
+    }
+  ]
+}

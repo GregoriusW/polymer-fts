@@ -1,0 +1,38 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/app-route/app-route.html">
+<link rel="import" href="fts-styles.html">
+
+<dom-module id="fts-preview">
+  <template>
+    <style include="fts-styles"></style>
+
+    <app-route route="[[route]]" pattern="/:activityKey/:personKey" data="{{routeData}}"></app-route>
+    <table>
+      <thead>
+        <tr>
+          <th>Participant</th>
+          <th>Activity</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+      </tbody>
+    </table>
+  </template>
+  <script>
+    class FTSPreview extends Polymer.Element {
+
+      static get is() { return 'fts-preview'; }
+
+      static get properties() {
+        return {
+          route: Object,
+          routeData: Object,
+        };
+      }
+
+    }
+
+    window.customElements.define(FTSPreview.is, FTSPreview);
+  </script>
+</dom-module>
